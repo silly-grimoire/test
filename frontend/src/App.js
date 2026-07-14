@@ -343,8 +343,9 @@ function App() {
 
     try {
       const hashedInput = await hashPassword(passwordInput);
-      if (hashedInput === requiredHash) {
-        localStorage.setItem('app_password_hash', hashedInput);
+      // Support both the SHA-256 hash and plain-text passwords in the secret configuration
+      if (hashedInput === requiredHash || passwordInput === requiredHash) {
+        localStorage.setItem('app_password_hash', requiredHash);
         setIsAuthenticated(true);
         setPasswordInput("");
         fetchTasks();
