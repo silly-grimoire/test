@@ -1,0 +1,50 @@
+id,column,category,task_name,is_subtask,parent_task,is_alert,is_done,last_done_date,task_type,amount_now,amount_total,order
+fa2d00e9-2374-42c3-91f5-752f6017ea45,Dailies,,Simaris Scan + TURN IN,TRUE,Simaris Standing,FALSE,TRUE,2026-05-21,checklist,1,1,0
+902e8406-5af7-40df-a9fd-31cd98c81da8,Dailies,High Prio,🦩 Cavia Standing,FALSE,,FALSE,TRUE,2026-05-21,checklist,1,1,1
+68fc1dce-99de-4346-af18-2808eca1c890,Dailies,High Prio,🌸 Entrati Standing,FALSE,,FALSE,FALSE,2026-05-16,checklist,0,1,2
+c874e83b-1754-4212-9d71-e3705cc2b735,Dailies,High Prio,Belly of the Beast,FALSE,,FALSE,FALSE,,checklist,0,1,3
+6a533f26-5976-481d-a75c-ad1628346b61,Dailies,High Prio,Simaris Standing,FALSE,,FALSE,TRUE,2026-05-21,checklist,1,1,4
+c402d8fe-bf05-48ac-9636-90128981ddc4,Dailies,High Prio,Nightwave Daily,FALSE,,FALSE,FALSE,2026-05-20,checklist,0,1,5
+29206b9f-25c1-4226-a279-fa9435068a35,Dailies,Other,Daily Focus,FALSE,,FALSE,FALSE,2026-05-20,checklist,0,1,6
+dc88e2d2-3059-46c0-bfd0-8263204668c9,Dailies,Other,Ducats x250,FALSE,,FALSE,FALSE,,checklist,0,1,7
+8d007376-2fc9-43d4-8c82-0573ddea356d,Dailies,Other,👾 Holdfasts Standing - Vosfor,FALSE,,FALSE,FALSE,2026-05-16,checklist,0,1,8
+d647f6ed-2228-4476-810f-197caae76e8f,Other / long term,,Moas + other pets,FALSE,,FALSE,FALSE,,checklist,0,1,9
+5580a90e-e613-4dc6-8d2f-f5714f0216ca,Other / long term,,Voidrig,FALSE,,FALSE,TRUE,2026-05-21,checklist,1,1,10
+460ae8d8-86ea-4abf-9913-e1323870c402,Other / long term,,Invasions (Mutagen Mass etc),FALSE,,FALSE,FALSE,,checklist,0,1,11
+52c2ee08-c8f6-4bef-9147-2afcd6662f18,Other / long term,,Formas @Vinquibus - Riven,FALSE,,FALSE,FALSE,,checklist,0,1,12
+7eee62ba-bdb2-4a47-b145-f1b208855aa5,Other / long term,,Quill Standing - R5,FALSE,,FALSE,FALSE,,checklist,0,1,13
+daed7e4b-5f44-443b-882e-5480bbf16c60,Other / long term,,Caliban Neuroptics,TRUE,Caliban,FALSE,TRUE,2026-05-16,checklist,1,1,14
+336dfc0f-7ba3-4ef0-a551-ccbca19f70d0,Other / long term,,Caliban Chassis,TRUE,Caliban,FALSE,FALSE,,checklist,0,1,15
+d8b56066-8b88-466a-8089-5dffcbaee3ed,Other / long term,,Caliban Systems,TRUE,Caliban,FALSE,FALSE,,checklist,0,1,16
+7fc2c5ee-1338-41e4-82d2-6d099a85c5a3,Other / long term,,Neuroptics,TRUE,Build Caliban,FALSE,TRUE,2026-05-16,checklist,1,1,17
+4fea7925-ac8a-4d27-8949-7939712cabe4,Other / long term,,Neuroptics,TRUE,Build Caliban  ,FALSE,TRUE,2026-05-16,checklist,1,1,18
+19d7dae2-3618-4d65-a369-3c27ec488e21,Other / long term,,Systems,TRUE,Build Caliban  ,FALSE,TRUE,2026-05-19,checklist,1,1,19
+677952bb-1646-4445-9e1d-f77a0dd1c7e9,Other / long term,,Chassis,TRUE,Build Caliban  ,FALSE,TRUE,2026-05-19,checklist,1,1,20
+54da3403-d81c-46ba-8aaa-8e37ef479ada,Other / long term,,6 nodes,TRUE,Saturn SP,FALSE,FALSE,,checklist,0,1,21
+a395a97e-e062-478a-af3c-a90d1ce41945,Other / long term,,Neuroptics,TRUE,Sevagoth BPs,FALSE,TRUE,2026-05-17,checklist,1,1,22
+7074c4c6-32c0-4d96-bb11-597fbc9ec95e,Other / long term,,Chassis,TRUE,Sevagoth BPs,FALSE,TRUE,2026-05-17,checklist,1,1,23
+6a508a1f-e01a-4ae1-b64d-01fff7ff2fdf,Other / long term,,Systems,TRUE,Sevagoth BPs,FALSE,TRUE,2026-05-17,checklist,1,1,24
+e7e00377-d0fc-4047-9035-b100828f71ad,Other / long term,Amp,Certus Brace,TRUE,Amp,FALSE,FALSE,,checklist,0,1,25
+00b1f3bd-458a-40db-99fc-58c4bb029460,To Do,,Test Subtask,TRUE,Test Parent,FALSE,FALSE,,checklist,0,1,26
+e40f70d0-0860-4bb5-807d-9752799377c0,Weeklies,,Shops,FALSE,,FALSE,TRUE,2026-05-19,checklist,1,1,0
+3ef58cd5-5765-4c22-b601-a2c6c978e96c,Weeklies,,Iron Wake,TRUE,Shops,FALSE,TRUE,2026-05-18,checklist,1,1,28
+d34e0332-9fbc-47bf-9f74-76b86bba7f5b,Weeklies,,Cavia - Archon Shard,TRUE,Shops,FALSE,TRUE,2026-05-18,checklist,1,1,29
+71d43987-4786-4eed-ad69-6f1412275b3b,Weeklies,,test,TRUE,test gh,FALSE,FALSE,,checklist,0,1,30
+9f52665e-c3c8-40d4-b502-ac36fbeb6093,Weeklies,,testf,TRUE,tes,FALSE,FALSE,2026-05-16,checklist,0,1,31
+12b423b6-bf77-43d0-850c-b5100607b47a,Weeklies,Shops,Teshin,TRUE,Shops,FALSE,TRUE,2026-05-18,checklist,1,1,32
+810b2535-b07a-4ad0-a302-9547a2e01d7b,Dailies,,Burning Hate - Stonks,TRUE,Belly of the Beast,FALSE,FALSE,,checklist,0,1,33
+f6cb3947-08e2-444a-b250-7f3328e650bb,Materials,,Arcane Hot Shot - R4,FALSE,,FALSE,FALSE,2026-05-21,progress,3,5,34
+989005f4-65a7-4c77-ba69-bb0bc6cb7857,Materials,,Arcane Hot Shot - R5,FALSE,,FALSE,FALSE,,progress,0,6,35
+80bae6d1-cb7a-441c-ad6b-ee8e63d9b051,Materials,,Saturn SP,FALSE,,FALSE,FALSE,,progress,9,15,36
+dd0e2b20-f9ed-4763-b1d7-68a11b426782,Materials,,Jupiter SP,FALSE,,FALSE,FALSE,,progress,0,16,37
+1ce2aa4a-7b9b-40ed-aaf7-e5117b9f439f,Materials,,Ducats,FALSE,,FALSE,FALSE,,progress,1080,2000,38
+ee522af3-583c-4ac7-ab6b-e84ff9d2d650,Materials,,To MR28,FALSE,,FALSE,FALSE,,progress,47400,142500,39
+877c343c-11b5-4983-8b12-e057a4de47d8,Weeklies,,1999 Calendar,FALSE,,FALSE,FALSE,,progress,4,6,1
+dd67f464-e728-47f6-ad83-da922fa13929,Weeklies,,Netracell,FALSE,,FALSE,FALSE,,progress,0,5,2
+14f830f2-7b85-4e40-9eb0-24c5155bcc9a,Weeklies,,Archon Hunt,FALSE,,FALSE,FALSE,,progress,1,3,3
+516ea734-da9a-48e1-806b-936eb04db5be,Weeklies,,Nightwave Weekly,FALSE,,FALSE,TRUE,2026-05-21,progress,7,7,4
+312d84c2-dff1-4338-9a24-998caa99ea40,Weeklies,,Descendia SP,FALSE,,FALSE,FALSE,,progress,0,21,5
+83700cc5-97c7-4fc9-9200-b333fc1a6f04,Weeklies,,RNG Fest,FALSE,,FALSE,FALSE,,checklist,0,1,6
+51466b28-d177-42e6-b1ef-5fc64715fc7f,Weeklies,,Duviri,FALSE,,FALSE,FALSE,,checklist,0,1,7
+99258833-99b4-4943-8a8b-2e5c03330620,Weeklies,,Helminth Invigoration,FALSE,,FALSE,FALSE,,checklist,0,1,8
+6df3b634-3102-4665-b5dd-d13e42c410e2,Other / long term,,Roathe's Insign,FALSE,,FALSE,FALSE,,progress,9,20,48
