@@ -6,32 +6,50 @@ import { hashPassword } from './cryptoUtils';
 const getJsonBinConfig = () => {
   const envBinId = process.env.REACT_APP_JSONBIN_BIN_ID;
   const envApiKey = process.env.REACT_APP_JSONBIN_API_KEY;
+  const envAccessKey = process.env.REACT_APP_JSONBIN_ACCESS_KEY;
   const localBinId = localStorage.getItem('jsonbin_bin_id');
   const localApiKey = localStorage.getItem('jsonbin_api_key');
+  const localAccessKey = localStorage.getItem('jsonbin_access_key');
 
-  const binId = envBinId || localBinId || "";
-  const apiKey = envApiKey || localApiKey || "";
+  const binId = localBinId || envBinId || "";
+  const apiKey = localApiKey || envApiKey || "";
+  const accessKey = localAccessKey || envAccessKey || "";
   const isEnabled = !!binId && !!apiKey;
 
-  return { binId, apiKey, isEnabled };
+  return { binId, apiKey, accessKey, isEnabled };
 };
 
 function saveTasksToJSONBin(rows) {
   const config = getJsonBinConfig();
-  if (!config.isEnabled) return;
+  if (!config.isEnabled) {
+    console.log("saveTasksToJSONBin: JSONBin configuration is disabled or incomplete. Skipping upload.");
+    return;
+  }
+  console.log(`saveTasksToJSONBin: Uploading ${rows.length} tasks to JSONBin (Bin ID: ${config.binId})...`);
+  const headers = {
+    'Content-Type': 'application/json',
+    'X-Master-Key': config.apiKey
+  };
+  if (config.accessKey) {
+    headers['X-Access-Key'] = config.accessKey;
+  }
   fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
     method: 'PUT',
-    headers: {
-      'Content-Type': 'application/json',
-      'X-Master-Key': config.apiKey
-    },
+    headers: headers,
     body: JSON.stringify(rows)
   })
   .then(res => {
-    if (!res.ok) throw new Error("JSONBin save failed");
-    console.log("Tasks saved to JSONBin successfully");
+    if (!res.ok) throw new Error("JSONBin save failed with status code " + res.status);
+    return res.json();
   })
-  .catch(err => console.error("Error saving to JSONBin:", err));
+  .then(data => {
+    console.log("saveTasksToJSONBin: Tasks successfully synced with JSONBin. Response:", data);
+    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: "" } }));
+  })
+  .catch(err => {
+    console.error("saveTasksToJSONBin: Error syncing with JSONBin:", err);
+    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message } }));
+  });
 }
 
 document.body.className = "dark-theme"; // Forces dark background
@@ -59,41 +77,6 @@ const TrashIcon = () => (
     <line x1="14" y1="11" x2="14" y2="17"></line>
   </svg>
 );
-function parseCSV(text) {
-  const lines = text.split('\n');
-  if (lines.length <= 1) return [];
-  
-  const headers = lines[0].split(',').map(h => h.trim());
-  const rows = [];
-  
-  for (let i = 1; i < lines.length; i++) {
-    const line = lines[i].trim();
-    if (!line) continue;
-    
-    const values = [];
-    let current = '';
-    let inQuotes = false;
-    for (let j = 0; j < line.length; j++) {
-      const char = line[j];
-      if (char === '"') {
-        inQuotes = !inQuotes;
-      } else if (char === ',' && !inQuotes) {
-        values.push(current.trim());
-        current = '';
-      } else {
-        current += char;
-      }
-    }
-    values.push(current.trim());
-    
-    const row = {};
-    headers.forEach((header, idx) => {
-      row[header] = values[idx] || '';
-    });
-    rows.push(row);
-  }
-  return rows;
-}
 
 function processTasks(rows) {
   const dashboard = {
@@ -144,9 +127,11 @@ function processTasks(rows) {
   });
 
   if (updated) {
-    localStorage.setItem('tasks_local_data', JSON.stringify(rows));
-    if (getJsonBinConfig().isEnabled) {
+    const config = getJsonBinConfig();
+    if (config.isEnabled) {
       saveTasksToJSONBin(rows);
+    } else {
+      localStorage.setItem('tasks_local_data', JSON.stringify(rows));
     }
   }
 
@@ -250,13 +235,14 @@ function processTasks(rows) {
 
 function App() {
   const [columns, setColumns] = useState({});
+  const [taskRows, setTaskRows] = useState([]);
   const [collapsedSections, setCollapsedSections] = useState({}); // New state for collapsed sections
   const [showCompleted, setShowCompleted] = useState(false);
   const [addingToColumn, setAddingToColumn] = useState(null); // Track which column is showing the input
   const [addingToCategory, setAddingToCategory] = useState(null); // Track which category is showing the input
   const [newCategoryTaskName, setNewCategoryTaskName] = useState("");
   const [addingSubtaskTo, setAddingSubtaskTo] = useState(null); // Track which task ID is adding a subtask
-  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const [newTaskName, setNewTaskName] = useState("");
   const [newSubtaskName, setNewSubtaskName] = useState("");
   const [newTaskType, setNewTaskType] = useState("checklist"); // New state for task type
@@ -267,23 +253,44 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   
-  // Local mode states
-  const [isLocalMode, setIsLocalMode] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [settingsBinId, setSettingsBinId] = useState(localStorage.getItem('jsonbin_bin_id') || "");
   const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('jsonbin_api_key') || "");
+  const [settingsAccessKey, setSettingsAccessKey] = useState(localStorage.getItem('jsonbin_access_key') || "");
+  const [dbError, setDbError] = useState("");
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
     localStorage.setItem('jsonbin_bin_id', settingsBinId.trim());
     localStorage.setItem('jsonbin_api_key', settingsApiKey.trim());
+    localStorage.setItem('jsonbin_access_key', settingsAccessKey.trim());
     setShowSettings(false);
     fetchTasks();
   };
 
+  useEffect(() => {
+    const handleStatus = (e) => {
+      const errMsg = e.detail.error;
+      if (errMsg) {
+        if (errMsg.includes("status 401") || errMsg.includes("status code 401")) {
+          setDbError("Database Sync Error: Unauthorized (401). Please check your API Key in Settings.");
+        } else if (errMsg.includes("status 404") || errMsg.includes("status code 404")) {
+          setDbError("Database Sync Error: Bin Not Found (404). Please check your Bin ID in Settings.");
+        } else {
+          setDbError("Database Sync Error: " + errMsg);
+        }
+      } else {
+        setDbError("");
+      }
+    };
+    window.addEventListener('jsonbin-status', handleStatus);
+    return () => window.removeEventListener('jsonbin-status', handleStatus);
+  }, []);
+
   const handleCancelSettings = () => {
     setSettingsBinId(localStorage.getItem('jsonbin_bin_id') || "");
     setSettingsApiKey(localStorage.getItem('jsonbin_api_key') || "");
+    setSettingsAccessKey(localStorage.getItem('jsonbin_access_key') || "");
     setShowSettings(false);
   };
 
@@ -295,117 +302,75 @@ function App() {
   };
 
   const saveLocalData = (rows) => {
-    localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+    setTaskRows(rows);
     const config = getJsonBinConfig();
     if (config.isEnabled) {
+      console.log(`saveLocalData: JSONBin sync is enabled. Uploading ${rows.length} rows to JSONBin cloud database...`);
       saveTasksToJSONBin(rows);
+    } else {
+      console.log(`saveLocalData: JSONBin is disabled. Saving ${rows.length} rows to local browser localStorage.`);
+      localStorage.setItem('tasks_local_data', JSON.stringify(rows));
     }
     const processed = processTasks(rows);
     setColumns(processed);
   };
 
   const getLocalData = () => {
-    const data = localStorage.getItem('tasks_local_data');
-    return data ? JSON.parse(data) : [];
+    return taskRows;
   };
 
   const loadLocalTasks = () => {
-    const localRows = localStorage.getItem('tasks_local_data');
     const config = getJsonBinConfig();
     if (config.isEnabled) {
+      console.log(`loadLocalTasks: Fetching tasks from JSONBin cloud database (Bin ID: ${config.binId})...`);
+      const headers = {
+        'X-Master-Key': config.apiKey,
+        'X-Bin-Meta': 'false'
+      };
+      if (config.accessKey) {
+        headers['X-Access-Key'] = config.accessKey;
+      }
       fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
-        headers: {
-          'X-Master-Key': config.apiKey,
-          'X-Bin-Meta': 'false'
-        }
+        headers: headers
       })
       .then(res => {
-        if (!res.ok) throw new Error("JSONBin fetch failed");
+        if (!res.ok) throw new Error("JSONBin fetch failed with status " + res.status);
         return res.json();
       })
       .then(data => {
         const rows = data.record || data;
-        localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+        console.log(`loadLocalTasks: Successfully fetched ${rows.length} tasks from JSONBin.`);
+        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: "" } }));
+        setTaskRows(rows);
         const processed = processTasks(rows);
         setColumns(processed);
       })
       .catch(err => {
-        console.error("Error fetching from JSONBin, falling back to local cache:", err);
-        if (localRows) {
-          const rows = JSON.parse(localRows);
-          const processed = processTasks(rows);
-          setColumns(processed);
-        } else {
-          setColumns({
-            "Weeklies": [],
-            "Dailies": [],
-            "Other / long term": [],
-            "Materials": []
-          });
-        }
+        console.error("loadLocalTasks: Error fetching from JSONBin. Setting task list to empty.", err);
+        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message } }));
+        setTaskRows([]);
+        setColumns({
+          "Weeklies": [],
+          "Dailies": [],
+          "Other / long term": [],
+          "Materials": []
+        });
       });
     } else {
-      if (localRows) {
-        const rows = JSON.parse(localRows);
-        const processed = processTasks(rows);
-        setColumns(processed);
-      } else {
-        fetch('./tasks.csv')
-          .then(res => {
-            if (!res.ok) throw new Error("Statically hosted tasks.csv not found");
-            return res.text();
-          })
-          .then(text => {
-            const rows = parseCSV(text);
-            localStorage.setItem('tasks_local_data', JSON.stringify(rows));
-            const processed = processTasks(rows);
-            setColumns(processed);
-          })
-          .catch(err => {
-            console.error("Error fetching static tasks.csv:", err);
-            setColumns({
-              "Weeklies": [],
-              "Dailies": [],
-              "Other / long term": [],
-              "Materials": []
-            });
-          });
-      }
+      console.log("loadLocalTasks: JSONBin is not configured. Starting with empty task list.");
+      setTaskRows([]);
+      setColumns({
+        "Weeklies": [],
+        "Dailies": [],
+        "Other / long term": [],
+        "Materials": []
+      });
     }
   };
 
   const fetchTasks = () => {
-    const config = getJsonBinConfig();
-    if (config.isEnabled) {
-      console.log("JSONBin mode enabled. Direct frontend sync activated.");
-      setIsLocalMode(true);
-      loadLocalTasks();
-      return;
-    }
-
-    const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
-    if (!isLocalhost) {
-      console.log("Hosted environment detected. Using Local Storage mode.");
-      setIsLocalMode(true);
-      loadLocalTasks();
-      return;
-    }
-
-    fetch('http://127.0.0.1:8000/api/tasks')
-      .then(res => {
-        if (!res.ok) throw new Error("HTTP error " + res.status);
-        return res.json();
-      })
-      .then(data => {
-        console.log("Tasks fetched from backend:", data);
-        setColumns(data);
-        setIsLocalMode(false);
-      })
-      .catch(err => {
-        console.log("Backend not available, falling back to local storage:", err);
-        setIsLocalMode(true);
-        loadLocalTasks();
-      });
+    console.log("fetchTasks: Initializing task load.");
+    loadLocalTasks();
   };
 
   useEffect(() => {
@@ -462,36 +427,22 @@ function App() {
 
 
   const renameTask = (taskId, newName) => {
-    if (isLocalMode) {
-      const rows = getLocalData();
-      let oldName = "";
+    const rows = getLocalData();
+    let oldName = "";
+    rows.forEach(row => {
+      if (row.id === taskId) {
+        oldName = row.task_name;
+        row.task_name = newName;
+      }
+    });
+    if (oldName) {
       rows.forEach(row => {
-        if (row.id === taskId) {
-          oldName = row.task_name;
-          row.task_name = newName;
+        if (row.is_subtask === "TRUE" && row.parent_task === oldName) {
+          row.parent_task = newName;
         }
       });
-      if (oldName) {
-        rows.forEach(row => {
-          if (row.is_subtask === "TRUE" && row.parent_task === oldName) {
-            row.parent_task = newName;
-          }
-        });
-      }
-      saveLocalData(rows);
-      return;
     }
-
-    fetch(`http://127.0.0.1:8000/api/tasks/rename?task_index=${encodeURIComponent(taskId)}&new_name=${encodeURIComponent(newName)}`, {
-      method: 'POST'
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        fetchTasks();
-      }
-    })
-    .catch(err => console.error("Error renaming task:", err));
+    saveLocalData(rows);
   };
 
   const handleTaskNameChange = (columnTitle, taskId, newName) => {
@@ -513,36 +464,20 @@ function App() {
   };
 
   const handleUpdateProgress = (taskId, amountNow, amountTotal) => {
-    if (isLocalMode) {
-      const rows = getLocalData();
-      rows.forEach(row => {
-        if (row.id === taskId) {
-          row.amount_now = String(amountNow);
-          row.amount_total = String(amountTotal);
-          if (parseInt(amountNow) >= parseInt(amountTotal)) {
-            row.is_done = "TRUE";
-            row.last_done_date = new Date().toISOString().split('T')[0];
-          } else {
-            row.is_done = "FALSE";
-          }
+    const rows = getLocalData();
+    rows.forEach(row => {
+      if (row.id === taskId) {
+        row.amount_now = String(amountNow);
+        row.amount_total = String(amountTotal);
+        if (parseInt(amountNow) >= parseInt(amountTotal)) {
+          row.is_done = "TRUE";
+          row.last_done_date = new Date().toISOString().split('T')[0];
+        } else {
+          row.is_done = "FALSE";
         }
-      });
-      saveLocalData(rows);
-      return;
-    }
-
-    fetch(`http://127.0.0.1:8000/api/tasks/progress?task_index=${encodeURIComponent(taskId)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ amount_now: amountNow, amount_total: amountTotal })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        fetchTasks();
       }
-    })
-    .catch(err => console.error("Error updating progress:", err));
+    });
+    saveLocalData(rows);
   };
 
   const handleLocalProgressChange = (columnTitle, taskId, field, value) => {
@@ -562,245 +497,126 @@ function App() {
 
   const toggleTask = (taskId, currentState) => {
     const newState = !currentState;
-    if (isLocalMode) {
-      const rows = getLocalData();
-      rows.forEach(row => {
-        if (row.id === taskId) {
-          row.is_done = newState ? "TRUE" : "FALSE";
-          if (newState) {
-            row.last_done_date = new Date().toISOString().split('T')[0];
-            if (row.task_type === "progress") {
-              row.amount_now = row.amount_total;
-            }
-          } else {
-            if (row.task_type === "progress") {
-              row.amount_now = "0";
-            }
+    const rows = getLocalData();
+    rows.forEach(row => {
+      if (row.id === taskId) {
+        row.is_done = newState ? "TRUE" : "FALSE";
+        if (newState) {
+          row.last_done_date = new Date().toISOString().split('T')[0];
+          if (row.task_type === "progress") {
+            row.amount_now = row.amount_total;
+          }
+        } else {
+          if (row.task_type === "progress") {
+            row.amount_now = "0";
           }
         }
-      });
-      saveLocalData(rows);
-      return;
-    }
-    
-    fetch(`http://127.0.0.1:8000/api/tasks/toggle?task_index=${encodeURIComponent(taskId)}`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ is_done: newState })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        fetchTasks();
       }
-    })
-    .catch(err => console.error("Error toggling task:", err));
+    });
+    saveLocalData(rows);
   };
 
   const deleteTask = (taskId) => {
     console.log("Attempting to delete task:", taskId);
-    if (isLocalMode) {
-      const rows = getLocalData();
-      const filtered = rows.filter(r => r.id !== taskId);
-      saveLocalData(filtered);
-      return;
-    }
-
-    fetch(`http://127.0.0.1:8000/api/tasks?task_index=${encodeURIComponent(taskId)}`, {
-      method: 'DELETE'
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        fetchTasks();
-      }
-    })
-    .catch(err => console.error("Error deleting task:", err));
+    const rows = getLocalData();
+    const filtered = rows.filter(r => r.id !== taskId);
+    saveLocalData(filtered);
   };
 
   const handleAddTask = (columnTitle) => {
-    if (!newTaskName.trim() || isSubmitting) return;
+    if (!newTaskName.trim()) return;
 
-    if (isLocalMode) {
-      const rows = getLocalData();
-      let maxOrder = -1;
-      rows.forEach(r => {
-        if (r.column === columnTitle && r.category === "") {
-          maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-        }
-      });
-      const newRow = {
-        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-        column: columnTitle,
-        category: "",
-        task_name: newTaskName,
-        is_subtask: "FALSE",
-        parent_task: "",
-        is_alert: "FALSE",
-        is_done: "FALSE",
-        last_done_date: "",
-        task_type: newTaskType,
-        amount_now: "0",
-        amount_total: newTaskType === 'progress' ? "100" : "1",
-        order: String(maxOrder + 1)
-      };
-      rows.push(newRow);
-      saveLocalData(rows);
-      setNewTaskName("");
-      setAddingToColumn(null);
-      setNewTaskType("checklist");
-      return;
-    }
-
-    setIsSubmitting(true);
-    fetch('http://127.0.0.1:8000/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        column: columnTitle,
-        task_name: newTaskName,
-        is_subtask: false,
-        is_alert: false,
-        task_type: newTaskType,
-        amount_now: 0,
-        amount_total: newTaskType === 'progress' ? 100 : 1
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        setNewTaskName("");
-        setAddingToColumn(null);
-        setNewTaskType("checklist");
-        fetchTasks();
+    const rows = getLocalData();
+    let maxOrder = -1;
+    rows.forEach(r => {
+      if (r.column === columnTitle && r.category === "") {
+        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
       }
-    })
-    .catch(err => console.error("Error adding task:", err))
-    .finally(() => setIsSubmitting(false));
+    });
+    const newRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      column: columnTitle,
+      category: "",
+      task_name: newTaskName,
+      is_subtask: "FALSE",
+      parent_task: "",
+      is_alert: "FALSE",
+      is_done: "FALSE",
+      last_done_date: "",
+      task_type: newTaskType,
+      amount_now: "0",
+      amount_total: newTaskType === 'progress' ? "100" : "1",
+      order: String(maxOrder + 1)
+    };
+    rows.push(newRow);
+    saveLocalData(rows);
+    setNewTaskName("");
+    setAddingToColumn(null);
+    setNewTaskType("checklist");
   };
 
   const handleAddTaskInCategory = (columnTitle, category) => {
-    if (!newCategoryTaskName.trim() || isSubmitting) return;
+    if (!newCategoryTaskName.trim()) return;
 
-    if (isLocalMode) {
-      const rows = getLocalData();
-      let maxOrder = -1;
-      rows.forEach(r => {
-        if (r.column === columnTitle && r.category === category) {
-          maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-        }
-      });
-      const newRow = {
-        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-        column: columnTitle,
-        category: category,
-        task_name: newCategoryTaskName,
-        is_subtask: "FALSE",
-        parent_task: "",
-        is_alert: "FALSE",
-        is_done: "FALSE",
-        last_done_date: "",
-        task_type: newTaskType,
-        amount_now: "0",
-        amount_total: newTaskType === 'progress' ? "100" : "1",
-        order: String(maxOrder + 1)
-      };
-      rows.push(newRow);
-      saveLocalData(rows);
-      setNewCategoryTaskName("");
-      setAddingToCategory(null);
-      setNewTaskType("checklist");
-      return;
-    }
-
-    setIsSubmitting(true);
-    fetch('http://127.0.0.1:8000/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        column: columnTitle,
-        task_name: newCategoryTaskName,
-        category: category,
-        is_subtask: false,
-        is_alert: false,
-        task_type: newTaskType,
-        amount_now: 0,
-        amount_total: newTaskType === 'progress' ? 100 : 1
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        setNewCategoryTaskName("");
-        setAddingToCategory(null);
-        setNewTaskType("checklist");
-        fetchTasks();
+    const rows = getLocalData();
+    let maxOrder = -1;
+    rows.forEach(r => {
+      if (r.column === columnTitle && r.category === category) {
+        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
       }
-    })
-    .catch(err => console.error("Error adding task to category:", err))
-    .finally(() => setIsSubmitting(false));
+    });
+    const newRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      column: columnTitle,
+      category: category,
+      task_name: newCategoryTaskName,
+      is_subtask: "FALSE",
+      parent_task: "",
+      is_alert: "FALSE",
+      is_done: "FALSE",
+      last_done_date: "",
+      task_type: newTaskType,
+      amount_now: "0",
+      amount_total: newTaskType === 'progress' ? "100" : "1",
+      order: String(maxOrder + 1)
+    };
+    rows.push(newRow);
+    saveLocalData(rows);
+    setNewCategoryTaskName("");
+    setAddingToCategory(null);
+    setNewTaskType("checklist");
   };
 
   const handleAddSubtask = (columnTitle, parentName) => {
-    if (!newSubtaskName.trim() || isSubmitting) return;
+    if (!newSubtaskName.trim()) return;
 
-    if (isLocalMode) {
-      const rows = getLocalData();
-      let maxOrder = -1;
-      rows.forEach(r => {
-        if (r.column === columnTitle && r.is_subtask === "TRUE" && r.parent_task === parentName) {
-          maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-        }
-      });
-      const newRow = {
-        id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-        column: columnTitle,
-        category: "",
-        task_name: newSubtaskName,
-        is_subtask: "TRUE",
-        parent_task: parentName,
-        is_alert: "FALSE",
-        is_done: "FALSE",
-        last_done_date: "",
-        task_type: newTaskType,
-        amount_now: "0",
-        amount_total: newTaskType === 'progress' ? "100" : "1",
-        order: String(maxOrder + 1)
-      };
-      rows.push(newRow);
-      saveLocalData(rows);
-      setNewSubtaskName("");
-      setAddingSubtaskTo(null);
-      setNewTaskType("checklist");
-      return;
-    }
-
-    setIsSubmitting(true);
-    fetch('http://127.0.0.1:8000/api/tasks', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        column: columnTitle,
-        task_name: newSubtaskName,
-        is_subtask: true,
-        parent_task: parentName,
-        is_alert: false,
-        task_type: newTaskType,
-        amount_now: 0,
-        amount_total: newTaskType === 'progress' ? 100 : 1
-      })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (data.success) {
-        setNewSubtaskName("");
-        setAddingSubtaskTo(null);
-        setNewTaskType("checklist");
-        fetchTasks();
+    const rows = getLocalData();
+    let maxOrder = -1;
+    rows.forEach(r => {
+      if (r.column === columnTitle && r.is_subtask === "TRUE" && r.parent_task === parentName) {
+        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
       }
-    })
-    .catch(err => console.error("Error adding subtask:", err))
-    .finally(() => setIsSubmitting(false));
+    });
+    const newRow = {
+      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
+      column: columnTitle,
+      category: "",
+      task_name: newSubtaskName,
+      is_subtask: "TRUE",
+      parent_task: parentName,
+      is_alert: "FALSE",
+      is_done: "FALSE",
+      last_done_date: "",
+      task_type: newTaskType,
+      amount_now: "0",
+      amount_total: newTaskType === 'progress' ? "100" : "1",
+      order: String(maxOrder + 1)
+    };
+    rows.push(newRow);
+    saveLocalData(rows);
+    setNewSubtaskName("");
+    setAddingSubtaskTo(null);
+    setNewTaskType("checklist");
   };
 
   const onDragEnd = (result) => {
@@ -830,43 +646,14 @@ function App() {
       }
     });
 
-    if (isLocalMode) {
-      const rows = getLocalData();
-      rows.forEach(row => {
-        if (row.id in taskMap) {
-          row.order = String(taskMap[row.id].order);
-          row.category = taskMap[row.id].category;
-        }
-      });
-      saveLocalData(rows);
-      return;
-    }
-
-    const tasksToSync = [];
-    newItems.forEach((item, idx) => {
-      if (item.isSectionTitle) {
-        currentCategory = item.name;
-      } else {
-        tasksToSync.push({ id: item.id, category: currentCategory });
+    const rows = getLocalData();
+    rows.forEach(row => {
+      if (row.id in taskMap) {
+        row.order = String(taskMap[row.id].order);
+        row.category = taskMap[row.id].category;
       }
     });
-
-    fetch('http://127.0.0.1:8000/api/tasks/reorder', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ tasks: tasksToSync })
-    })
-    .then(res => res.json())
-    .then(data => {
-      if (!data.success) {
-        console.error("Failed to sync order:", data.error);
-        fetchTasks(); // Rollback
-      }
-    })
-    .catch(err => {
-      console.error("Error syncing order:", err);
-      fetchTasks(); // Rollback
-    });
+    saveLocalData(rows);
   };
 
   if (checkingAuth) {
@@ -936,6 +723,13 @@ function App() {
           </button>
         )}
       </div>
+
+      {dbError && (
+        <div className="db-error-banner">
+          <span>⚠️ {dbError}</span>
+          <button onClick={() => setDbError("")} title="Dismiss">×</button>
+        </div>
+      )}
 
       
       <DragDropContext onDragEnd={onDragEnd}>
@@ -1311,6 +1105,16 @@ function App() {
                   value={settingsApiKey}
                   onChange={(e) => setSettingsApiKey(e.target.value)}
                   required
+                />
+              </div>
+              <div className="settings-field">
+                <label htmlFor="settingsAccessKey">JSONBin Access Key (Optional)</label>
+                <input 
+                  type="password" 
+                  id="settingsAccessKey"
+                  placeholder="Only required if using scoped keys..."
+                  value={settingsAccessKey}
+                  onChange={(e) => setSettingsAccessKey(e.target.value)}
                 />
               </div>
               <div className="settings-actions">
