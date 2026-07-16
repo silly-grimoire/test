@@ -40,6 +40,8 @@ jobs:
       - name: Build React App
         env:
           REACT_APP_PASSWORD_HASH: ${{ secrets.REACT_APP_PASSWORD_HASH }}
+          REACT_APP_JSONBIN_BIN_ID: ${{ secrets.REACT_APP_JSONBIN_BIN_ID }}
+          REACT_APP_JSONBIN_API_KEY: ${{ secrets.REACT_APP_JSONBIN_API_KEY }}
         run: npm run build
         working-directory: frontend
 

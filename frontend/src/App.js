@@ -3,6 +3,26 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import './App.css';
 import { hashPassword } from './cryptoUtils';
 
+const JSONBIN_BIN_ID = process.env.REACT_APP_JSONBIN_BIN_ID;
+const JSONBIN_API_KEY = process.env.REACT_APP_JSONBIN_API_KEY;
+const isJsonBinEnabled = !!(JSONBIN_BIN_ID && JSONBIN_API_KEY);
+
+function saveTasksToJSONBin(rows) {
+  if (!isJsonBinEnabled) return;
+  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+    method: 'PUT',
+    headers: {
+      'Content-Type': 'application/json',
+      'X-Master-Key': JSONBIN_API_KEY
+    },
+    body: JSON.stringify(rows)
+  })
+  .then(res => {
+    if (!res.ok) throw new Error("JSONBin save failed");
+    console.log("Tasks saved to JSONBin successfully");
+  })
+  .catch(err => console.error("Error saving to JSONBin:", err));
+}
 
 document.body.className = "dark-theme"; // Forces dark background
 
@@ -115,6 +135,9 @@ function processTasks(rows) {
 
   if (updated) {
     localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+    if (isJsonBinEnabled) {
+      saveTasksToJSONBin(rows);
+    }
   }
 
   // Sort rows
@@ -246,6 +269,9 @@ function App() {
 
   const saveLocalData = (rows) => {
     localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+    if (isJsonBinEnabled) {
+      saveTasksToJSONBin(rows);
+    }
     const processed = processTasks(rows);
     setColumns(processed);
   };
@@ -257,35 +283,76 @@ function App() {
 
   const loadLocalTasks = () => {
     const localRows = localStorage.getItem('tasks_local_data');
-    if (localRows) {
-      const rows = JSON.parse(localRows);
-      const processed = processTasks(rows);
-      setColumns(processed);
-    } else {
-      fetch('./tasks.csv')
-        .then(res => {
-          if (!res.ok) throw new Error("Statically hosted tasks.csv not found");
-          return res.text();
-        })
-        .then(text => {
-          const rows = parseCSV(text);
-          localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+    if (isJsonBinEnabled) {
+      fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+        headers: {
+          'X-Master-Key': JSONBIN_API_KEY,
+          'X-Bin-Meta': 'false'
+        }
+      })
+      .then(res => {
+        if (!res.ok) throw new Error("JSONBin fetch failed");
+        return res.json();
+      })
+      .then(data => {
+        const rows = data.record || data;
+        localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+        const processed = processTasks(rows);
+        setColumns(processed);
+      })
+      .catch(err => {
+        console.error("Error fetching from JSONBin, falling back to local cache:", err);
+        if (localRows) {
+          const rows = JSON.parse(localRows);
           const processed = processTasks(rows);
           setColumns(processed);
-        })
-        .catch(err => {
-          console.error("Error fetching static tasks.csv:", err);
+        } else {
           setColumns({
             "Weeklies": [],
             "Dailies": [],
             "Other / long term": [],
             "Materials": []
           });
-        });
+        }
+      });
+    } else {
+      if (localRows) {
+        const rows = JSON.parse(localRows);
+        const processed = processTasks(rows);
+        setColumns(processed);
+      } else {
+        fetch('./tasks.csv')
+          .then(res => {
+            if (!res.ok) throw new Error("Statically hosted tasks.csv not found");
+            return res.text();
+          })
+          .then(text => {
+            const rows = parseCSV(text);
+            localStorage.setItem('tasks_local_data', JSON.stringify(rows));
+            const processed = processTasks(rows);
+            setColumns(processed);
+          })
+          .catch(err => {
+            console.error("Error fetching static tasks.csv:", err);
+            setColumns({
+              "Weeklies": [],
+              "Dailies": [],
+              "Other / long term": [],
+              "Materials": []
+            });
+          });
+      }
     }
   };
 
   const fetchTasks = () => {
+    if (isJsonBinEnabled) {
+      console.log("JSONBin mode enabled. Direct frontend sync activated.");
+      setIsLocalMode(true);
+      loadLocalTasks();
+      return;
+    }
+
     const isLocalhost = window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1';
     if (!isLocalhost) {
       console.log("Hosted environment detected. Using Local Storage mode.");
