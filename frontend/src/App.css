@@ -580,4 +580,133 @@ body.dark-theme {
 
 @keyframes spin {
   to { transform: rotate(360deg); }
-}
+}
+
+/* Settings Button and Modal Styles */
+.settings-btn {
+  background-color: #1c1e22;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+  z-index: 999;
+  position: relative;
+  margin-left: 10px;
+}
+
+.settings-btn:hover {
+  background-color: #3f37c9;
+  border-color: #4895ef;
+  color: #fff;
+}
+
+.settings-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10000;
+  backdrop-filter: blur(8px);
+}
+
+.settings-modal {
+  background: rgba(19, 20, 22, 0.9);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  width: 90%;
+  max-width: 450px;
+  padding: 30px;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  animation: cardFadeIn 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.settings-modal h2 {
+  margin-top: 0;
+  margin-bottom: 12px;
+  font-size: 1.5rem;
+  color: var(--text-header);
+}
+
+.settings-modal p {
+  color: #8a8f98;
+  font-size: 0.85rem;
+  line-height: 1.4;
+  margin-bottom: 20px;
+}
+
+.settings-field {
+  margin-bottom: 15px;
+  text-align: left;
+}
+
+.settings-field label {
+  display: block;
+  font-size: 0.8rem;
+  color: var(--text-main);
+  margin-bottom: 6px;
+  font-weight: 500;
+}
+
+.settings-field input {
+  width: 100%;
+  padding: 10px 12px;
+  background-color: #121315;
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-main);
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s;
+  box-sizing: border-box;
+}
+
+.settings-field input:focus {
+  border-color: #4895ef;
+}
+
+.settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+.settings-cancel-btn {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.settings-cancel-btn:hover {
+  background-color: #2c2e33;
+}
+
+.settings-save-btn {
+  background-color: #3f37c9;
+  border: 1px solid #4895ef;
+  color: #fff;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.85rem;
+  transition: all 0.2s;
+}
+
+.settings-save-btn:hover {
+  background-color: #4895ef;
+}
+

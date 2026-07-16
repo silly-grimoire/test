@@ -3,17 +3,27 @@ import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import './App.css';
 import { hashPassword } from './cryptoUtils';
 
-const JSONBIN_BIN_ID = process.env.REACT_APP_JSONBIN_BIN_ID;
-const JSONBIN_API_KEY = process.env.REACT_APP_JSONBIN_API_KEY;
-const isJsonBinEnabled = !!(JSONBIN_BIN_ID && JSONBIN_API_KEY);
+const getJsonBinConfig = () => {
+  const envBinId = process.env.REACT_APP_JSONBIN_BIN_ID;
+  const envApiKey = process.env.REACT_APP_JSONBIN_API_KEY;
+  const localBinId = localStorage.getItem('jsonbin_bin_id');
+  const localApiKey = localStorage.getItem('jsonbin_api_key');
+
+  const binId = envBinId || localBinId || "";
+  const apiKey = envApiKey || localApiKey || "";
+  const isEnabled = !!binId && !!apiKey;
+
+  return { binId, apiKey, isEnabled };
+};
 
 function saveTasksToJSONBin(rows) {
-  if (!isJsonBinEnabled) return;
-  fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+  const config = getJsonBinConfig();
+  if (!config.isEnabled) return;
+  fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
     method: 'PUT',
     headers: {
       'Content-Type': 'application/json',
-      'X-Master-Key': JSONBIN_API_KEY
+      'X-Master-Key': config.apiKey
     },
     body: JSON.stringify(rows)
   })
@@ -135,7 +145,7 @@ function processTasks(rows) {
 
   if (updated) {
     localStorage.setItem('tasks_local_data', JSON.stringify(rows));
-    if (isJsonBinEnabled) {
+    if (getJsonBinConfig().isEnabled) {
       saveTasksToJSONBin(rows);
     }
   }
@@ -259,6 +269,23 @@ function App() {
   
   // Local mode states
   const [isLocalMode, setIsLocalMode] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  const [settingsBinId, setSettingsBinId] = useState(localStorage.getItem('jsonbin_bin_id') || "");
+  const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('jsonbin_api_key') || "");
+
+  const handleSaveSettings = (e) => {
+    e.preventDefault();
+    localStorage.setItem('jsonbin_bin_id', settingsBinId.trim());
+    localStorage.setItem('jsonbin_api_key', settingsApiKey.trim());
+    setShowSettings(false);
+    fetchTasks();
+  };
+
+  const handleCancelSettings = () => {
+    setSettingsBinId(localStorage.getItem('jsonbin_bin_id') || "");
+    setSettingsApiKey(localStorage.getItem('jsonbin_api_key') || "");
+    setShowSettings(false);
+  };
 
   const toggleSection = (columnTitle, sectionId) => {
     setCollapsedSections(prev => ({
@@ -269,7 +296,8 @@ function App() {
 
   const saveLocalData = (rows) => {
     localStorage.setItem('tasks_local_data', JSON.stringify(rows));
-    if (isJsonBinEnabled) {
+    const config = getJsonBinConfig();
+    if (config.isEnabled) {
       saveTasksToJSONBin(rows);
     }
     const processed = processTasks(rows);
@@ -283,10 +311,11 @@ function App() {
 
   const loadLocalTasks = () => {
     const localRows = localStorage.getItem('tasks_local_data');
-    if (isJsonBinEnabled) {
-      fetch(`https://api.jsonbin.io/v3/b/${JSONBIN_BIN_ID}`, {
+    const config = getJsonBinConfig();
+    if (config.isEnabled) {
+      fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
         headers: {
-          'X-Master-Key': JSONBIN_API_KEY,
+          'X-Master-Key': config.apiKey,
           'X-Bin-Meta': 'false'
         }
       })
@@ -346,7 +375,8 @@ function App() {
   };
 
   const fetchTasks = () => {
-    if (isJsonBinEnabled) {
+    const config = getJsonBinConfig();
+    if (config.isEnabled) {
       console.log("JSONBin mode enabled. Direct frontend sync activated.");
       setIsLocalMode(true);
       loadLocalTasks();
@@ -889,6 +919,13 @@ function App() {
         >
           {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
         </button>
+        <button 
+          className="settings-btn" 
+          onClick={() => setShowSettings(true)}
+          title="Database Settings"
+        >
+          ⚙️ Database
+        </button>
         {process.env.REACT_APP_PASSWORD_HASH && (
           <button 
             className="logout-btn" 
@@ -1246,6 +1283,48 @@ function App() {
           ))}
         </div>
       </DragDropContext>
+      {showSettings && (
+        <div className="settings-overlay">
+          <div className="settings-modal">
+            <h2>Cloud Sync Settings</h2>
+            <p>
+              Link a JSONBin cloud database to keep your tasks synchronized across all devices and browsers.
+            </p>
+            <form onSubmit={handleSaveSettings}>
+              <div className="settings-field">
+                <label htmlFor="settingsBinId">JSONBin ID</label>
+                <input 
+                  type="text" 
+                  id="settingsBinId"
+                  placeholder="e.g. 64b85c18b712..."
+                  value={settingsBinId}
+                  onChange={(e) => setSettingsBinId(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="settings-field">
+                <label htmlFor="settingsApiKey">JSONBin Master Key (API Key)</label>
+                <input 
+                  type="password" 
+                  id="settingsApiKey"
+                  placeholder="e.g. $2b$10$..."
+                  value={settingsApiKey}
+                  onChange={(e) => setSettingsApiKey(e.target.value)}
+                  required
+                />
+              </div>
+              <div className="settings-actions">
+                <button type="button" className="settings-cancel-btn" onClick={handleCancelSettings}>
+                  Cancel
+                </button>
+                <button type="submit" className="settings-save-btn">
+                  Save & Sync
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
