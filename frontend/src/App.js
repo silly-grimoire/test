@@ -670,7 +670,7 @@ function App() {
         <div className="login-glass-card">
           <div className="login-header">
             <div className="login-logo-glow"></div>
-            <h1>Taskade Clone</h1>
+            <h1>Todo app or something</h1>
             <p>Secure Productivity Dashboard</p>
           </div>
           <form onSubmit={handleLogin} className="login-form">
