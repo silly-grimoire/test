@@ -1,0 +1,257 @@
+/* E-ink Grayscale High Contrast Theme stylesheet */
+
+/* Disable all transitions and animations to prevent ghosting on E-ink screens */
+.eink-theme *,
+.eink-theme *::before,
+.eink-theme *::after {
+  transition: none !important;
+  animation: none !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+body.eink-theme {
+  background-color: #ffffff !important;
+  background-image: none !important;
+  color: #000000 !important;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  -webkit-font-smoothing: auto;
+  -moz-osx-font-smoothing: auto;
+}
+
+/* Base resets & layouts */
+.eink-theme .cosmetic-header {
+  background-color: #ffffff !important;
+  border-bottom: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.eink-theme .task-card {
+  background-color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+}
+
+.eink-theme .task-card h2,
+.eink-theme .section-title {
+  color: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* Inputs & Forms */
+.eink-theme .task-name-input {
+  color: #000000 !important;
+  border-bottom: 1px dashed #666666 !important;
+}
+
+.eink-theme .task-name-input:focus {
+  border-bottom: 2px solid #000000 !important;
+  color: #000000 !important;
+}
+
+.eink-theme .add-task-form input,
+.eink-theme .subtask-form input,
+.eink-theme .settings-field input,
+.eink-theme .login-form input {
+  background-color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 8px !important;
+  color: #000000 !important;
+}
+
+.eink-theme .add-task-form input::placeholder {
+  color: #666666 !important;
+}
+
+/* Buttons & Toggles */
+.eink-theme .toggle-completed-btn,
+.eink-theme .settings-btn,
+.eink-theme .logout-btn,
+.eink-theme .tab-btn,
+.eink-theme .widget-btn,
+.eink-theme .settings-cancel-btn,
+.eink-theme .settings-save-btn,
+.eink-theme .login-submit-btn {
+  background-color: #ffffff !important;
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 8px !important;
+  color: #000000 !important;
+  font-weight: bold !important;
+  cursor: pointer !important;
+  transform: none !important;
+  padding: 8px 16px !important;
+}
+
+.eink-theme .toggle-completed-btn:hover,
+.eink-theme .settings-btn:hover,
+.eink-theme .logout-btn:hover,
+.eink-theme .tab-btn:hover,
+.eink-theme .widget-btn:hover,
+.eink-theme .settings-cancel-btn:hover,
+.eink-theme .settings-save-btn:hover,
+.eink-theme .login-submit-btn:hover {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+}
+
+.eink-theme .tab-btn.active,
+.eink-theme .type-toggle-btn.active {
+  background-color: #000000 !important;
+  color: #ffffff !important;
+  border-color: #000000 !important;
+}
+
+.eink-theme .type-toggle-btn {
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+  border-radius: 6px !important;
+  background-color: #ffffff !important;
+}
+
+/* Checkbox & Checkmarks */
+.eink-theme .checkmark {
+  border: 2px solid #000000 !important;
+  border-radius: 4px !important; /* Soft rounded checklist boxes */
+  background-color: #ffffff !important;
+}
+
+.eink-theme .task-item > input[type="checkbox"]:checked ~ .checkmark {
+  background-color: #000000 !important;
+}
+
+.eink-theme .task-item > input[type="checkbox"]:checked ~ .checkmark::after {
+  content: "" !important;
+  position: absolute !important;
+  left: 4px !important;
+  top: 1px !important;
+  width: 4px !important;
+  height: 8px !important;
+  border: solid #ffffff !important;
+  border-width: 0 2px 2px 0 !important;
+  transform: rotate(45deg) !important;
+}
+
+.eink-theme .task-item.completed .task-name-input {
+  text-decoration: line-through !important;
+  opacity: 0.6 !important;
+}
+
+/* Progress bar styling (no smooth gradient, standard blocks) */
+.eink-theme .progress-container {
+  background-color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 6px !important;
+  height: 12px !important;
+}
+
+.eink-theme .progress-bar {
+  background-color: #000000 !important;
+  background: #000000 !important;
+  border-radius: 4px !important;
+}
+
+.eink-theme .progress-bar::after {
+  display: none !important;
+}
+
+.eink-theme .progress-input,
+.eink-theme .progress-total {
+  color: #000000 !important;
+  border-bottom: 1px solid #000000 !important;
+}
+
+.eink-theme .progress-input:focus,
+.eink-theme .progress-total:focus {
+  background-color: #f0f0f0 !important;
+}
+
+/* Icons & buttons inside tasks */
+.eink-theme .icon-btn {
+  opacity: 1 !important;
+  color: #000000 !important;
+}
+
+.eink-theme .icon-btn:hover {
+  color: #000000 !important;
+  font-weight: bold !important;
+}
+
+/* Modals & Overlays */
+.eink-theme .settings-overlay,
+.eink-theme .login-screen-container {
+  background: #ffffff !important;
+  position: fixed !important;
+}
+
+.eink-theme .settings-modal,
+.eink-theme .login-glass-card {
+  background: #ffffff !important;
+  border: 3px solid #000000 !important;
+  border-radius: 12px !important;
+  box-shadow: none !important;
+  color: #000000 !important;
+}
+
+.eink-theme .settings-modal h2,
+.eink-theme .settings-field label,
+.eink-theme .login-header h1,
+.eink-theme .login-header p {
+  color: #000000 !important;
+}
+
+.eink-theme .login-header h1 {
+  background: none !important;
+  -webkit-text-fill-color: initial !important;
+}
+
+/* Database Sync Error Banner */
+.eink-theme .db-error-banner {
+  background-color: #ffffff !important;
+  border: 3px solid #000000 !important;
+  color: #000000 !important;
+  border-radius: 8px !important;
+}
+
+/* Drag & Drop lines */
+.eink-theme .subtask {
+  border-left: 2px solid #000000 !important;
+}
+
+/* Scrollbars */
+.eink-theme *::-webkit-scrollbar {
+  width: 12px !important;
+  height: 12px !important;
+}
+
+.eink-theme *::-webkit-scrollbar-track {
+  background: #ffffff !important;
+  border: 1px solid #000000 !important;
+}
+
+.eink-theme *::-webkit-scrollbar-thumb {
+  background-color: #000000 !important;
+  border: 1px solid #ffffff !important;
+}
+
+/* Random images section (E-ink doesn't do color well, but high-contrast helps. Add a CSS filter if needed, but simple layouts are key) */
+.eink-theme .random-pic-wrapper {
+  background-color: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 12px !important;
+}
+
+.eink-theme .controls-overlay-widget {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  border-radius: 10px !important;
+  color: #000000 !important;
+}
+
+.eink-theme .timer-text-widget,
+.eink-theme .timer-text-widget strong {
+  color: #000000 !important;
+}

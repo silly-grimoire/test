@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import './App.css';
+import './eink.css';
 import { hashPassword } from './cryptoUtils';
 import RandomPic from './RandomPic';
 
@@ -54,7 +55,7 @@ function saveTasksToJSONBin(rows) {
   });
 }
 
-document.body.className = "dark-theme"; // Forces dark background
+document.body.className = localStorage.getItem('eink_mode') === 'true' ? 'eink-theme' : 'dark-theme'; // Initial body theme
 
 const EyeIcon = () => (
 // ... (rest of icons)
@@ -238,6 +239,18 @@ function processTasks(rows) {
 function App() {
   const [columns, setColumns] = useState({});
   const [taskRows, setTaskRows] = useState([]);
+  const [isEinkMode, setIsEinkMode] = useState(() => localStorage.getItem('eink_mode') === 'true');
+
+  useEffect(() => {
+    if (isEinkMode) {
+      document.body.classList.remove('dark-theme');
+      document.body.classList.add('eink-theme');
+    } else {
+      document.body.classList.remove('eink-theme');
+      document.body.classList.add('dark-theme');
+    }
+    localStorage.setItem('eink_mode', isEinkMode);
+  }, [isEinkMode]);
   const [collapsedSections, setCollapsedSections] = useState({}); // New state for collapsed sections
   const [showCompleted, setShowCompleted] = useState(false);
   const [addingToColumn, setAddingToColumn] = useState(null); // Track which column is showing the input
@@ -749,6 +762,13 @@ function App() {
             {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
           </button>
         )}
+        <button 
+          className="settings-btn" 
+          onClick={() => setIsEinkMode(!isEinkMode)}
+          title={isEinkMode ? "Switch to standard theme" : "Switch to E-ink High Contrast theme"}
+        >
+          {isEinkMode ? "📱 Standard Mode" : "🕶️ E-Ink Mode"}
+        </button>
         <button 
           className="settings-btn" 
           onClick={() => setShowSettings(true)}
