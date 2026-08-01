@@ -775,11 +775,10 @@ body.dark-theme {
   color: var(--text-header);
 }
 
-/* Random Image Generator Styles */
 .random-pic-wrapper {
   position: relative;
   width: calc(100% - 140px);
-  height: calc(100vh - 160px); /* Fill screen below the top bar */
+  height: calc(100vh - 110px); /* Fill screen below the top bar */
   overflow: hidden;
   background-color: #000000;
   border-radius: 12px;
@@ -787,7 +786,7 @@ body.dark-theme {
   display: flex;
   justify-content: center;
   align-items: center;
-  margin: -35px auto 40px auto;
+  margin: -5px auto 15px auto;
   z-index: 1;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
 }

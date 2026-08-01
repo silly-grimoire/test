@@ -260,7 +260,30 @@ function App() {
   const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('jsonbin_api_key') || "");
   const [settingsAccessKey, setSettingsAccessKey] = useState(localStorage.getItem('jsonbin_access_key') || "");
   const [dbError, setDbError] = useState("");
-  const [activeTab, setActiveTab] = useState('todo'); // 'todo' or 'random-pic'
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash;
+    if (hash === '#/randimgs' || hash === '#/random-pic') {
+      return 'random-pic';
+    }
+    return 'todo';
+  });
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hash = window.location.hash;
+      if (hash === '#/randimgs' || hash === '#/random-pic') {
+        setActiveTab('random-pic');
+      } else {
+        setActiveTab('todo');
+      }
+    };
+    window.addEventListener('hashchange', handleHashChange);
+    // Set default hash if empty
+    if (!window.location.hash) {
+      window.location.hash = '#/';
+    }
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
 
 
   const handleSaveSettings = (e) => {
@@ -706,13 +729,13 @@ function App() {
         <div className="tab-container">
           <button 
             className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`}
-            onClick={() => setActiveTab('todo')}
+            onClick={() => window.location.hash = '#/'}
           >
             📝 Todo List
           </button>
           <button 
             className={`tab-btn ${activeTab === 'random-pic' ? 'active' : ''}`}
-            onClick={() => setActiveTab('random-pic')}
+            onClick={() => window.location.hash = '#/randimgs'}
           >
             🖼️ Random Images
           </button>
