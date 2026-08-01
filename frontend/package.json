@@ -2,12 +2,11 @@
   "name": "frontend",
   "version": "0.1.0",
   "private": true,
-  "homepage": "https://silly-grimoire.github.io/test/",
+  "homepage": "https://silly-grimoire.github.io/test",
   "dependencies": {
     "@hello-pangea/dnd": "^18.0.1",
     "axios": "^1.7.9",
     "bootstrap": "^5.3.3",
-    "gh-pages": "^5.0.0",
     "cra-template": "1.2.0",
     "cross-env": "^10.1.0",
     "react": "^19.0.0",
@@ -19,12 +18,8 @@
   "scripts": {
     "start": "cross-env BROWSER=none react-scripts start",
     "build": "react-scripts build",
-    "predeploy": "npm run build && rm -rf docs && mv build docs",
-    "deploy": "git add docs && git commit -m \"Deploy to GitHub Pages\" && git push",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d build"
+    "eject": "react-scripts eject"
   },
   "eslintConfig": {
     "extends": [
