@@ -742,7 +742,7 @@ function App() {
         <div className="tab-container">
           <button 
             className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`}
-            onClick={() => window.location.hash = '#/'}
+            onClick={() => setActiveTab('todo')}
           >
             📝 Todo List
           </button>
