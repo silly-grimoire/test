@@ -2,6 +2,8 @@ import React, { useEffect, useState } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import './App.css';
 import { hashPassword } from './cryptoUtils';
+import RandomPic from './RandomPic';
+
 
 const getJsonBinConfig = () => {
   const envBinId = process.env.REACT_APP_JSONBIN_BIN_ID;
@@ -258,6 +260,8 @@ function App() {
   const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('jsonbin_api_key') || "");
   const [settingsAccessKey, setSettingsAccessKey] = useState(localStorage.getItem('jsonbin_access_key') || "");
   const [dbError, setDbError] = useState("");
+  const [activeTab, setActiveTab] = useState('todo'); // 'todo' or 'random-pic'
+
 
   const handleSaveSettings = (e) => {
     e.preventDefault();
@@ -699,13 +703,29 @@ function App() {
     <div className="app-wrapper">
       <div className="cosmetic-header"></div>
       <div className="top-bar">
-        <button 
-          className="toggle-completed-btn" 
-          onClick={() => setShowCompleted(!showCompleted)}
-          title={showCompleted ? "Showing completed" : "Hiding completed"}
-        >
-          {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
-        </button>
+        <div className="tab-container">
+          <button 
+            className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`}
+            onClick={() => setActiveTab('todo')}
+          >
+            📝 Todo List
+          </button>
+          <button 
+            className={`tab-btn ${activeTab === 'random-pic' ? 'active' : ''}`}
+            onClick={() => setActiveTab('random-pic')}
+          >
+            🖼️ Random Images
+          </button>
+        </div>
+        {activeTab === 'todo' && (
+          <button 
+            className="toggle-completed-btn" 
+            onClick={() => setShowCompleted(!showCompleted)}
+            title={showCompleted ? "Showing completed" : "Hiding completed"}
+          >
+            {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
+          </button>
+        )}
         <button 
           className="settings-btn" 
           onClick={() => setShowSettings(true)}
@@ -732,8 +752,9 @@ function App() {
       )}
 
       
-      <DragDropContext onDragEnd={onDragEnd}>
-        <div className="dashboard-container">
+      {activeTab === 'todo' ? (
+        <DragDropContext onDragEnd={onDragEnd}>
+          <div className="dashboard-container">
           {Object.keys(columns).map((columnTitle) => (
             <div key={columnTitle} className="task-card">
               <h2>{columnTitle}</h2>
@@ -1077,6 +1098,9 @@ function App() {
           ))}
         </div>
       </DragDropContext>
+      ) : (
+        <RandomPic />
+      )}
       {showSettings && (
         <div className="settings-overlay">
           <div className="settings-modal">

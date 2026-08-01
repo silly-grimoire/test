@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Random Image Generator</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      height: 100vh;
+      width: 100vw;
+      overflow: hidden; /* Prevents scrollbars */
+      background-color: #000000;
+      position: relative;
+    }
+
+    /* Full-screen image container */
+    .image-container {
+      width: 100vw;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* Scales image as large as possible without cropping or warping */
+    img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+      display: block;
+    }
+
+    /* UI Overlay anchored to the bottom-right corner */
+    .controls-overlay {
+      position: absolute;
+      bottom: 24px;
+      right: 24px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 10px;
+      background: rgba(0, 0, 0, 0.65);
+      backdrop-filter: blur(8px);
+      padding: 14px 18px;
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+      z-index: 10;
+    }
+
+    .timer-text {
+      font-size: 0.85rem;
+      color: #e5e7eb;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .button-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    button {
+      background-color: #2563eb;
+      color: white;
+      border: none;
+      padding: 8px 14px;
+      font-size: 0.85rem;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.2s ease, transform 0.1s ease;
+    }
+
+    button:hover {
+      background-color: #1d4ed8;
+    }
+
+    button:active {
+      transform: scale(0.96);
+    }
+  </style>
+</head>
+<body>
+
+  <div class="image-container">
+    <img id="randomImage" src="" alt="Randomized Image">
+  </div>
+
+  <!-- Corner Widget -->
+  <div class="controls-overlay">
+    <div class="timer-text">
+      Next image in: <strong id="countdown">02:00</strong>
+    </div>
+    <div class="button-group">
+      <button onclick="navigatePrevious()">← Prev</button>
+      <button onclick="navigateNext()">Next →</button>
+    </div>
+  </div>
+
+<!-- Load external array first -->
+<script src="image_urls.js"></script>
+
+<!-- Main script -->
+<script>
+  const DURATION_SECONDS = 120; // 2 minutes
+  let timeRemaining = DURATION_SECONDS;
+  let timerInterval = null;
+
+  let playlist = [];
+  let currentIndex = 0;
+
+  // Fisher-Yates Shuffle algorithm for a true random order
+  function shuffleArray(array) {
+    const shuffled = [...array];
+    for (let i = shuffled.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+    }
+    return shuffled;
+  }
+
+  function displayCurrentImage() {
+    if (!playlist || playlist.length === 0) return;
+    document.getElementById('randomImage').src = playlist[currentIndex];
+  }
+
+  function navigateNext() {
+    if (playlist.length === 0) return;
+    
+    // Move to next image (loops back to 0 if at the end)
+    currentIndex = (currentIndex + 1) % playlist.length;
+    displayCurrentImage();
+    startCountdown(); // Reset 2-minute timer
+  }
+
+  function navigatePrevious() {
+    if (playlist.length === 0) return;
+
+    // Move to previous image (loops to end if at 0)
+    currentIndex = (currentIndex - 1 + playlist.length) % playlist.length;
+    displayCurrentImage();
+    startCountdown(); // Reset 2-minute timer
+  }
+
+  function updateCountdownDisplay() {
+    const minutes = Math.floor(timeRemaining / 60);
+    const seconds = timeRemaining % 60;
+
+    const formattedTime =
+      String(minutes).padStart(2, '0') + ':' +
+      String(seconds).padStart(2, '0');
+
+    document.getElementById('countdown').textContent = formattedTime;
+  }
+
+  function startCountdown() {
+    if (timerInterval) clearInterval(timerInterval);
+
+    timeRemaining = DURATION_SECONDS;
+    updateCountdownDisplay();
+
+    timerInterval = setInterval(() => {
+      timeRemaining--;
+      updateCountdownDisplay();
+
+      if (timeRemaining <= 0) {
+        navigateNext();
+      }
+    }, 1000);
+  }
+
+  // Keyboard Navigation Listener
+  window.addEventListener('keydown', function(event) {
+    if (event.key === 'ArrowRight') {
+      navigateNext();
+    } else if (event.key === 'ArrowLeft') {
+      navigatePrevious();
+    }
+  });
+
+  window.onload = function() {
+    if (typeof imageUrls !== 'undefined' && imageUrls.length > 0) {
+      playlist = shuffleArray(imageUrls);
+      displayCurrentImage();
+      startCountdown();
+    }
+  };
+</script>
+
+</body>
+</html>
