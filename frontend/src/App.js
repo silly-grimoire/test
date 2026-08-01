@@ -748,7 +748,7 @@ function App() {
           </button>
           <button 
             className={`tab-btn ${activeTab === 'random-pic' ? 'active' : ''}`}
-            onClick={() => window.location.hash = '#/randimgs'}
+            onClick={() => setActiveTab('random-pic')}
           >
             🖼️ Random Images
           </button>
