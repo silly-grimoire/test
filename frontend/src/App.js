@@ -10,13 +10,10 @@ const getJsonBinConfig = () => {
   const envBinId = process.env.REACT_APP_JSONBIN_BIN_ID;
   const envApiKey = process.env.REACT_APP_JSONBIN_API_KEY;
   const envAccessKey = process.env.REACT_APP_JSONBIN_ACCESS_KEY;
-  const localBinId = localStorage.getItem('jsonbin_bin_id');
-  const localApiKey = localStorage.getItem('jsonbin_api_key');
-  const localAccessKey = localStorage.getItem('jsonbin_access_key');
 
-  const binId = localBinId || envBinId || "";
-  const apiKey = localApiKey || envApiKey || "";
-  const accessKey = localAccessKey || envAccessKey || "";
+  const binId = envBinId || "";
+  const apiKey = envApiKey || "";
+  const accessKey = envAccessKey || "";
   const isEnabled = !!binId && !!apiKey;
 
   return { binId, apiKey, accessKey, isEnabled };
@@ -133,8 +130,6 @@ function processTasks(rows) {
     const config = getJsonBinConfig();
     if (config.isEnabled) {
       saveTasksToJSONBin(rows);
-    } else {
-      localStorage.setItem('tasks_local_data', JSON.stringify(rows));
     }
   }
 
@@ -268,11 +263,8 @@ function App() {
   const [authError, setAuthError] = useState("");
   const [checkingAuth, setCheckingAuth] = useState(true);
   
-  const [showSettings, setShowSettings] = useState(false);
-  const [settingsBinId, setSettingsBinId] = useState(localStorage.getItem('jsonbin_bin_id') || "");
-  const [settingsApiKey, setSettingsApiKey] = useState(localStorage.getItem('jsonbin_api_key') || "");
-  const [settingsAccessKey, setSettingsAccessKey] = useState(localStorage.getItem('jsonbin_access_key') || "");
   const [dbError, setDbError] = useState("");
+  const [fatalDbError, setFatalDbError] = useState("");
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash;
     if (hash === '#/randimgs' || hash === '#/random-pic') {
@@ -299,40 +291,36 @@ function App() {
   }, []);
 
 
-  const handleSaveSettings = (e) => {
-    e.preventDefault();
-    localStorage.setItem('jsonbin_bin_id', settingsBinId.trim());
-    localStorage.setItem('jsonbin_api_key', settingsApiKey.trim());
-    localStorage.setItem('jsonbin_access_key', settingsAccessKey.trim());
-    setShowSettings(false);
-    fetchTasks();
-  };
+
 
   useEffect(() => {
     const handleStatus = (e) => {
       const errMsg = e.detail.error;
+      const isFatal = e.detail.isFatal;
       if (errMsg) {
+        let msg = "";
         if (errMsg.includes("status 401") || errMsg.includes("status code 401")) {
-          setDbError("Database Sync Error: Unauthorized (401). Please check your API Key in Settings.");
+          msg = "Database Sync Error: Unauthorized (401). Please check your API Key in Settings.";
         } else if (errMsg.includes("status 404") || errMsg.includes("status code 404")) {
-          setDbError("Database Sync Error: Bin Not Found (404). Please check your Bin ID in Settings.");
+          msg = "Database Sync Error: Bin Not Found (404). Please check your Bin ID in Settings.";
         } else {
-          setDbError("Database Sync Error: " + errMsg);
+          msg = "Database Sync Error: " + errMsg;
+        }
+        if (isFatal) {
+          setFatalDbError(msg);
+        } else {
+          setDbError(msg);
         }
       } else {
         setDbError("");
+        setFatalDbError("");
       }
     };
     window.addEventListener('jsonbin-status', handleStatus);
     return () => window.removeEventListener('jsonbin-status', handleStatus);
   }, []);
 
-  const handleCancelSettings = () => {
-    setSettingsBinId(localStorage.getItem('jsonbin_bin_id') || "");
-    setSettingsApiKey(localStorage.getItem('jsonbin_api_key') || "");
-    setSettingsAccessKey(localStorage.getItem('jsonbin_access_key') || "");
-    setShowSettings(false);
-  };
+
 
   const toggleSection = (columnTitle, sectionId) => {
     setCollapsedSections(prev => ({
@@ -347,9 +335,6 @@ function App() {
     if (config.isEnabled) {
       console.log(`saveLocalData: JSONBin sync is enabled. Uploading ${rows.length} rows to JSONBin cloud database...`);
       saveTasksToJSONBin(rows);
-    } else {
-      console.log(`saveLocalData: JSONBin is disabled. Saving ${rows.length} rows to local browser localStorage.`);
-      localStorage.setItem('tasks_local_data', JSON.stringify(rows));
     }
     const processed = processTasks(rows);
     setColumns(processed);
@@ -387,7 +372,7 @@ function App() {
       })
       .catch(err => {
         console.error("loadLocalTasks: Error fetching from JSONBin. Setting task list to empty.", err);
-        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message } }));
+        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message, isFatal: true } }));
         setTaskRows([]);
         setColumns({
           "Weeklies": [],
@@ -421,11 +406,7 @@ function App() {
         setIsAuthenticated(true);
         fetchTasks();
       } else {
-        const savedHash = localStorage.getItem('app_password_hash');
-        if (savedHash === requiredHash) {
-          setIsAuthenticated(true);
-          fetchTasks();
-        }
+
       }
       setCheckingAuth(false);
     };
@@ -447,7 +428,6 @@ function App() {
       const hashedInput = await hashPassword(passwordInput);
       // Support both the SHA-256 hash and plain-text passwords in the secret configuration
       if (hashedInput === requiredHash || passwordInput === requiredHash) {
-        localStorage.setItem('app_password_hash', requiredHash);
         setIsAuthenticated(true);
         setPasswordInput("");
         fetchTasks();
@@ -461,7 +441,6 @@ function App() {
   };
 
   const handleLogout = () => {
-    localStorage.removeItem('app_password_hash');
     setIsAuthenticated(false);
   };
 
@@ -769,13 +748,7 @@ function App() {
         >
           {isEinkMode ? "📱 Standard Mode" : "🕶️ E-Ink Mode"}
         </button>
-        <button 
-          className="settings-btn" 
-          onClick={() => setShowSettings(true)}
-          title="Database Settings"
-        >
-          ⚙️ Database
-        </button>
+
         {process.env.REACT_APP_PASSWORD_HASH && (
           <button 
             className="logout-btn" 
@@ -795,7 +768,13 @@ function App() {
       )}
 
       
-      {activeTab === 'todo' ? (
+      {fatalDbError ? (
+        <div className="fatal-error-screen" style={{ textAlign: 'center', marginTop: '100px', color: '#ff6b6b' }}>
+          <h2>Failed to load database</h2>
+          <p>{fatalDbError}</p>
+          <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', cursor: 'pointer', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', marginTop: '20px' }}>Retry</button>
+        </div>
+      ) : activeTab === 'todo' ? (
         <DragDropContext onDragEnd={onDragEnd}>
           <div className="dashboard-container">
           {Object.keys(columns).map((columnTitle) => (
@@ -1144,58 +1123,7 @@ function App() {
       ) : (
         <RandomPic />
       )}
-      {showSettings && (
-        <div className="settings-overlay">
-          <div className="settings-modal">
-            <h2>Cloud Sync Settings</h2>
-            <p>
-              Link a JSONBin cloud database to keep your tasks synchronized across all devices and browsers.
-            </p>
-            <form onSubmit={handleSaveSettings}>
-              <div className="settings-field">
-                <label htmlFor="settingsBinId">JSONBin ID</label>
-                <input 
-                  type="text" 
-                  id="settingsBinId"
-                  placeholder="e.g. 64b85c18b712..."
-                  value={settingsBinId}
-                  onChange={(e) => setSettingsBinId(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="settings-field">
-                <label htmlFor="settingsApiKey">JSONBin Master Key (API Key)</label>
-                <input 
-                  type="password" 
-                  id="settingsApiKey"
-                  placeholder="e.g. $2b$10$..."
-                  value={settingsApiKey}
-                  onChange={(e) => setSettingsApiKey(e.target.value)}
-                  required
-                />
-              </div>
-              <div className="settings-field">
-                <label htmlFor="settingsAccessKey">JSONBin Access Key (Optional)</label>
-                <input 
-                  type="password" 
-                  id="settingsAccessKey"
-                  placeholder="Only required if using scoped keys..."
-                  value={settingsAccessKey}
-                  onChange={(e) => setSettingsAccessKey(e.target.value)}
-                />
-              </div>
-              <div className="settings-actions">
-                <button type="button" className="settings-cancel-btn" onClick={handleCancelSettings}>
-                  Cancel
-                </button>
-                <button type="submit" className="settings-save-btn">
-                  Save & Sync
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+
     </div>
   );
 }
