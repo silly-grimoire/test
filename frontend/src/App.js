@@ -23,8 +23,12 @@ function saveTasksToJSONBin(rows) {
   const config = getJsonBinConfig();
   if (!config.isEnabled) {
     console.log("saveTasksToJSONBin: JSONBin configuration is disabled or incomplete. Skipping upload.");
+    window.dispatchEvent(new CustomEvent('jsonbin-status', { 
+      detail: { action: 'save_error', error: "JSONBin is not configured in Settings." } 
+    }));
     return;
   }
+  window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_start' } }));
   console.log(`saveTasksToJSONBin: Uploading ${rows.length} tasks to JSONBin (Bin ID: ${config.binId})...`);
   const headers = {
     'Content-Type': 'application/json',
@@ -44,11 +48,11 @@ function saveTasksToJSONBin(rows) {
   })
   .then(data => {
     console.log("saveTasksToJSONBin: Tasks successfully synced with JSONBin. Response:", data);
-    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: "" } }));
+    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_success', error: "" } }));
   })
   .catch(err => {
     console.error("saveTasksToJSONBin: Error syncing with JSONBin:", err);
-    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message } }));
+    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_error', error: err.message } }));
   });
 }
 
@@ -98,8 +102,6 @@ function processTasks(rows) {
   const lastMonday = new Date(now.setDate(diff));
   lastMonday.setHours(0, 0, 0, 0);
 
-  let updated = false;
-
   rows.forEach(row => {
     const isDone = parseBoolean(row.is_done);
     const lastDoneStr = row.last_done_date;
@@ -115,23 +117,21 @@ function processTasks(rows) {
         if (row.task_type === "progress") {
           row.amount_now = "0";
         }
-        updated = true;
       } else if (col === "Weeklies" && lastDoneDate < lastMonday) {
         row.is_done = "FALSE";
         if (row.task_type === "progress") {
           row.amount_now = "0";
         }
-        updated = true;
       }
     }
   });
 
-  if (updated) {
-    const config = getJsonBinConfig();
-    if (config.isEnabled) {
-      saveTasksToJSONBin(rows);
-    }
-  }
+//  if (updated) {
+//    const config = getJsonBinConfig();
+//    if (config.isEnabled) {
+//      saveTasksToJSONBin(rows);
+//    }
+//  }
 
   // Sort rows
   rows.sort((a, b) => {
@@ -293,11 +293,34 @@ function App() {
 
 
 
+  const [toast, setToast] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+
   useEffect(() => {
+    let toastTimer;
     const handleStatus = (e) => {
-      const errMsg = e.detail.error;
-      const isFatal = e.detail.isFatal;
-      if (errMsg) {
+      const { action, error, isFatal } = e.detail || {};
+      const errMsg = error;
+
+      if (action === 'save_start') {
+        setIsSaving(true);
+        setToast({ message: 'Saving tasks to JSONBin...', type: 'info' });
+      } else if (action === 'save_success') {
+        setIsSaving(false);
+        setToast({ message: 'Successfully saved to JSONBin!', type: 'success' });
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => setToast(null), 3000);
+      } else if (action === 'save_error') {
+        setIsSaving(false);
+        const msg = errMsg ? (
+          errMsg.includes("401") ? "Unauthorized (401). Check API Key in Settings." :
+          errMsg.includes("404") ? "Bin Not Found (404). Check Bin ID in Settings." :
+          errMsg
+        ) : "Unknown save error";
+        setToast({ message: 'Save Failed: ' + msg, type: 'error' });
+        clearTimeout(toastTimer);
+        toastTimer = setTimeout(() => setToast(null), 4000);
+      } else if (errMsg) {
         let msg = "";
         if (errMsg.includes("status 401") || errMsg.includes("status code 401")) {
           msg = "Database Sync Error: Unauthorized (401). Please check your API Key in Settings.";
@@ -317,7 +340,10 @@ function App() {
       }
     };
     window.addEventListener('jsonbin-status', handleStatus);
-    return () => window.removeEventListener('jsonbin-status', handleStatus);
+    return () => {
+      window.removeEventListener('jsonbin-status', handleStatus);
+      clearTimeout(toastTimer);
+    };
   }, []);
 
 
@@ -331,11 +357,6 @@ function App() {
 
   const saveLocalData = (rows) => {
     setTaskRows(rows);
-    const config = getJsonBinConfig();
-    if (config.isEnabled) {
-      console.log(`saveLocalData: JSONBin sync is enabled. Uploading ${rows.length} rows to JSONBin cloud database...`);
-      saveTasksToJSONBin(rows);
-    }
     const processed = processTasks(rows);
     setColumns(processed);
   };
@@ -733,13 +754,23 @@ function App() {
           </button>
         </div>
         {activeTab === 'todo' && (
-          <button 
-            className="toggle-completed-btn" 
-            onClick={() => setShowCompleted(!showCompleted)}
-            title={showCompleted ? "Showing completed" : "Hiding completed"}
-          >
-            {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
-          </button>
+          <>
+            <button 
+              className={`save-btn ${isSaving ? 'saving' : ''}`}
+              onClick={() => saveTasksToJSONBin(taskRows)}
+              disabled={isSaving}
+              title="Save data to JSONBin cloud database"
+            >
+              {isSaving ? '⏳ SAVING...' : '💾 SAVE'}
+            </button>
+            <button 
+              className="toggle-completed-btn" 
+              onClick={() => setShowCompleted(!showCompleted)}
+              title={showCompleted ? "Showing completed" : "Hiding completed"}
+            >
+              {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
+            </button>
+          </>
         )}
         <button 
           className="settings-btn" 
@@ -759,6 +790,18 @@ function App() {
           </button>
         )}
       </div>
+
+      {toast && (
+        <div className={`toast-notification toast-${toast.type}`}>
+          <span>
+            {toast.type === 'success' && '✅ '}
+            {toast.type === 'error' && '❌ '}
+            {toast.type === 'info' && '⏳ '}
+            {toast.message}
+          </span>
+          <button onClick={() => setToast(null)} title="Close">×</button>
+        </div>
+      )}
 
       {dbError && (
         <div className="db-error-banner">

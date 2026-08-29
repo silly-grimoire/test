@@ -67,6 +67,7 @@ body.eink-theme {
 }
 
 /* Buttons & Toggles */
+.eink-theme .save-btn,
 .eink-theme .toggle-completed-btn,
 .eink-theme .settings-btn,
 .eink-theme .logout-btn,
@@ -86,6 +87,7 @@ body.eink-theme {
   padding: 8px 16px !important;
 }
 
+.eink-theme .save-btn:hover,
 .eink-theme .toggle-completed-btn:hover,
 .eink-theme .settings-btn:hover,
 .eink-theme .logout-btn:hover,
@@ -96,6 +98,17 @@ body.eink-theme {
 .eink-theme .login-submit-btn:hover {
   background-color: #000000 !important;
   color: #ffffff !important;
+}
+
+.eink-theme .toast-notification {
+  background: #ffffff !important;
+  border: 2px solid #000000 !important;
+  color: #000000 !important;
+  box-shadow: 4px 4px 0px #000000 !important;
+}
+
+.eink-theme .toast-notification button {
+  color: #000000 !important;
 }
 
 .eink-theme .tab-btn.active,
