@@ -583,35 +583,50 @@ body.dark-theme {
   to { transform: rotate(360deg); }
 }
 
-/* Save Button Styles */
-.save-btn {
-  background-color: #2b8a3e;
-  border: 1px solid #37b24d;
-  color: #ffffff;
+/* Save Toggle Button Styles */
+.save-toggle-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #1c1e22;
+  border: 1px solid var(--border-color);
+  color: var(--text-muted, #aaa);
   padding: 8px 16px;
-  border-radius: 4px;
+  border-radius: 20px;
   cursor: pointer;
   font-size: 0.85rem;
   font-weight: 600;
-  transition: all 0.2s;
+  transition: all 0.25s ease;
   z-index: 999;
   position: relative;
   margin-left: 24px;
   margin-right: 12px;
 }
 
-.save-btn:hover {
-  background-color: #2f9e44;
-  border-color: #40c057;
-  box-shadow: 0 0 10px rgba(64, 192, 87, 0.4);
+.save-toggle-btn:hover {
+  border-color: #555a61;
+  color: var(--text-main, #fff);
 }
 
-.save-btn:disabled,
-.save-btn.saving {
-  background-color: #1e5e29;
-  border-color: #2b8a3e;
-  opacity: 0.8;
-  cursor: not-allowed;
+.save-toggle-btn.active {
+  background-color: rgba(43, 138, 62, 0.25);
+  border-color: #40c057;
+  color: #ffffff;
+  box-shadow: 0 0 12px rgba(64, 192, 87, 0.3);
+}
+
+.save-toggle-btn.active:hover {
+  background-color: rgba(43, 138, 62, 0.4);
+  border-color: #51cf66;
+}
+
+.save-toggle-btn .toggle-indicator {
+  font-size: 0.75rem;
+  line-height: 1;
+}
+
+.save-toggle-btn.saving {
+  opacity: 0.85;
 }
 
 /* Toast Notification Styles */

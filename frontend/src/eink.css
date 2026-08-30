@@ -67,7 +67,7 @@ body.eink-theme {
 }
 
 /* Buttons & Toggles */
-.eink-theme .save-btn,
+.eink-theme .save-toggle-btn,
 .eink-theme .toggle-completed-btn,
 .eink-theme .settings-btn,
 .eink-theme .logout-btn,
@@ -79,7 +79,7 @@ body.eink-theme {
   background-color: #ffffff !important;
   background: #ffffff !important;
   border: 2px solid #000000 !important;
-  border-radius: 8px !important;
+  border-radius: 20px !important;
   color: #000000 !important;
   font-weight: bold !important;
   cursor: pointer !important;
@@ -87,7 +87,8 @@ body.eink-theme {
   padding: 8px 16px !important;
 }
 
-.eink-theme .save-btn:hover,
+.eink-theme .save-toggle-btn:hover,
+.eink-theme .save-toggle-btn.active,
 .eink-theme .toggle-completed-btn:hover,
 .eink-theme .settings-btn:hover,
 .eink-theme .logout-btn:hover,

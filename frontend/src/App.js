@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import './App.css';
 import './eink.css';
@@ -295,6 +295,25 @@ function App() {
 
   const [toast, setToast] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const autoSaveRef = useRef(false);
+
+  useEffect(() => {
+    autoSaveRef.current = autoSaveEnabled;
+  }, [autoSaveEnabled]);
+
+  const handleToggleAutoSave = () => {
+    const nextState = !autoSaveEnabled;
+    setAutoSaveEnabled(nextState);
+    autoSaveRef.current = nextState;
+
+    if (nextState) {
+      saveTasksToJSONBin(taskRows);
+    } else {
+      setToast({ message: 'Auto-Save turned OFF', type: 'info' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
 
   useEffect(() => {
     let toastTimer;
@@ -307,7 +326,8 @@ function App() {
         setToast({ message: 'Saving tasks to JSONBin...', type: 'info' });
       } else if (action === 'save_success') {
         setIsSaving(false);
-        setToast({ message: 'Successfully saved to JSONBin!', type: 'success' });
+        const msg = autoSaveRef.current ? 'Auto-Save: Synced to JSONBin!' : 'Successfully saved to JSONBin!';
+        setToast({ message: msg, type: 'success' });
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setToast(null), 3000);
       } else if (action === 'save_error') {
@@ -359,6 +379,10 @@ function App() {
     setTaskRows(rows);
     const processed = processTasks(rows);
     setColumns(processed);
+
+    if (autoSaveRef.current) {
+      saveTasksToJSONBin(rows);
+    }
   };
 
   const getLocalData = () => {
@@ -756,12 +780,14 @@ function App() {
         {activeTab === 'todo' && (
           <>
             <button 
-              className={`save-btn ${isSaving ? 'saving' : ''}`}
-              onClick={() => saveTasksToJSONBin(taskRows)}
-              disabled={isSaving}
-              title="Save data to JSONBin cloud database"
+              className={`save-toggle-btn ${autoSaveEnabled ? 'active' : ''} ${isSaving ? 'saving' : ''}`}
+              onClick={handleToggleAutoSave}
+              title={autoSaveEnabled ? "Auto-Save is ON. Click to turn OFF." : "Auto-Save is OFF. Click to turn ON and sync once to JSONBin."}
             >
-              {isSaving ? '⏳ SAVING...' : '💾 SAVE'}
+              <span className="toggle-indicator">{autoSaveEnabled ? '🟢' : '⚪'}</span>
+              <span className="toggle-text">
+                {isSaving ? '⏳ SAVING...' : autoSaveEnabled ? 'AUTO-SAVE: ON' : 'AUTO-SAVE: OFF'}
+              </span>
             </button>
             <button 
               className="toggle-completed-btn" 
