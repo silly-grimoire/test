@@ -4,6 +4,7 @@ import './App.css';
 import './eink.css';
 import { hashPassword } from './cryptoUtils';
 import RandomPic from './RandomPic';
+import CaviaTracker from './CaviaTracker';
 
 
 const getJsonBinConfig = () => {
@@ -844,7 +845,9 @@ function App() {
           <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', cursor: 'pointer', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', marginTop: '20px' }}>Retry</button>
         </div>
       ) : activeTab === 'todo' ? (
-        <DragDropContext onDragEnd={onDragEnd}>
+        <>
+          <DragDropContext onDragEnd={onDragEnd}>
+
           <div className="dashboard-container">
           {Object.keys(columns).map((columnTitle) => (
             <div key={columnTitle} className="task-card">
@@ -1189,6 +1192,12 @@ function App() {
           ))}
         </div>
       </DragDropContext>
+      <div className="dashboard-bottom-container">
+        <CaviaTracker />
+      </div>
+      </>
+
+
       ) : (
         <RandomPic />
       )}
