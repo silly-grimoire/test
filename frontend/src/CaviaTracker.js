@@ -35,21 +35,21 @@ const CAVIA_NODE_DETAILS_MAP = {
 };
 
 const HEX_NODE_DETAILS_MAP = {
-  SolNode852: {
-    name: 'Legacite Harvest (Shell Cracker)',
-    level: '55-60',
+  SolNode850: {
+    name: 'Legacyte Harvest (Shell Cracker)',
+    level: '65-70',
     standingNormal: '3,000',
     standingSteelPath: '4,500'
   },
-  SolNode850: {
-    name: 'Maintenance Tunnels',
-    level: '55-60',
+  SolNode852: {
+    name: 'Techrot Survival',
+    level: '65-70',
     standingNormal: '1,000',
     standingSteelPath: '1,500'
   },
   SolNode853: {
     name: 'Scaldra Exterminate',
-    level: '55-60',
+    level: '65-70',
     standingNormal: '2,000',
     standingSteelPath: '3,000'
   }
@@ -63,19 +63,56 @@ const MISSION_TYPE_MAP = {
 };
 
 const CHALLENGE_FALLBACK_MAP = {
+  EntratiLabLootCratesChallenge: 'Find 3 Murmur Sarcophages',
+  EntratiLabDestroyDecorationChallenge: 'Destroy 50 decorations',
+  EntratiLabDefenseActivatePillarChallenge: 'Activate 2 Defenses with Vosphene Glyphs',
+  EntratiLabDefenseActivatePillarHardChallenge: 'Activate 2 Defenses with Vosphene Glyphs',
+  EntratiLabDefeatDoppelgangerChallenge: 'Defeat the Mocking or Scathing Whisper',
   EntratiLabSixMinuteChallenge: 'Complete this Bounty in 6 Minutes',
   EntratiLabSummonNecramechChallenge: 'Summon a Necramech',
   EntratiLabKillVialedEnemyChallenge: 'Douse 30 enemies with Vitriol',
   EntratiLabKillMurmurHardChallenge: 'Eliminate 200 Murmur enemies',
+  EntratiLabKillMurmurChallenge: 'Eliminate 150 Murmur enemies',
   EntratiLabKillVoidRigEasyChallenge: 'Eliminate 2 Rogue Voidrigs',
+  EntratiLabKillVoidRigChallenge: 'Eliminate 2 Rogue Voidrigs',
+  EntratiLabRangedMechWeakpointChallenge: 'Destroy 6 Culverin weak points',
+  EntratiLabCollectTearsChallenge: 'Collect 3 Murmur Eyes',
+  EntratiLabDestroyDemolystLimbsChallenge: 'Destroy 4 Demolisher limbs',
+  EntratiLabActivateConduitsQuickChallenge: 'Activate 2 Conduits in 30s',
+  EntratiLabActivateLohkSurgeChallenge: 'Activate 2 Lohk Surges',
   VaniaShellCracker: 'Shell Cracker',
-  VaniaSafeCracker: 'Break Cover',
+  VaniaSafeCracker: 'Find and open the Techrot cache',
   VaniaDestroyVehiclesEasy: 'Destroy Vehicles',
   VaniaDestroyPropsEasy: 'Destroy Props',
   VaniaDestroyBackpacksNormal: 'Destroy Techrot Backpacks',
   VaniaDestroyHazardsHard: 'Destroy Environmental Hazards',
   VaniaExplodingInfested: 'Defeat Exploding Infested',
   LichVaniaExplodingInfested: 'Defeat Exploding Infested'
+};
+
+const CHALLENGE_COUNT_MAP = {
+  LootCrates: 3,
+  KillVialedEnemy: 30,
+  KillMurmur: 150,
+  KillMurmurHard: 200,
+  KillVoidRig: 2,
+  KillVoidRigEasy: 2,
+  DestroyDecoration: 50,
+  DefenseActivatePillar: 2,
+  DefenseActivatePillarHard: 2,
+  RangedMechWeakpoint: 6,
+  CollectTears: 3,
+  DestroyDemolystLimbs: 4,
+  ActivateLohkSurge: 2,
+  AlchemyGrenadeElectric: 15,
+  AlchemyGrenadeFire: 15,
+  AlchemyGrenadeIce: 15,
+  AlchemyGrenadeToxin: 15,
+  KillFlyingMurmur: 15,
+  SafeCracker: 1,
+  DestroyBackpacks: 15,
+  DestroyProps: 15,
+  DestroyHazards: 10
 };
 
 const VARIABLE_NAME_FALLBACK = {
@@ -98,11 +135,67 @@ const VARIABLE_DESC_FALLBACK = {
 function formatChallengeName(challengePath, dict = {}) {
   if (!challengePath) return 'Special Objective';
   if (dict[challengePath]) return dict[challengePath];
-  
+
   const lastPart = challengePath.split('/').pop();
-  if (dict[lastPart]) return dict[lastPart];
-  if (dict[`/Lotus/Language/Challenges/${lastPart}`]) return dict[`/Lotus/Language/Challenges/${lastPart}`];
+  const cleanPart = lastPart.replace(/(Easy|Normal|Hard|VeryHard|Medium)Challenge$/, 'Challenge');
+  const withoutSuffix = lastPart.replace(/(Easy|Normal|Hard|VeryHard|Medium)?(Challenge)?$/, '');
+  const withChallenge = withoutSuffix + 'Challenge';
+
+  const candidates = [
+    // EntratiLab Desc
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${lastPart}_Desc`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${cleanPart}_Desc`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withChallenge}_Desc`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withoutSuffix}_Desc`,
+    // 1999 Desc
+    `/Lotus/Language/1999Bounties/Challenge_${lastPart}_Desc`,
+    `/Lotus/Language/1999Bounties/Challenge_${cleanPart}_Desc`,
+    `/Lotus/Language/1999Bounties/Challenge_${withChallenge}_Desc`,
+    `/Lotus/Language/1999Bounties/Challenge_${withoutSuffix}_Desc`,
+    // 1999 Name
+    `/Lotus/Language/1999Bounties/Challenge_${lastPart}_Name`,
+    `/Lotus/Language/1999Bounties/Challenge_${cleanPart}_Name`,
+    `/Lotus/Language/1999Bounties/Challenge_${withChallenge}_Name`,
+    `/Lotus/Language/1999Bounties/Challenge_${withoutSuffix}_Name`,
+    // EntratiLab Name
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${lastPart}_Name`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${cleanPart}_Name`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withChallenge}_Name`,
+    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withoutSuffix}_Name`,
+    // Generic challenges
+    `/Lotus/Language/Challenges/${lastPart}`,
+    `/Lotus/Language/Challenges/${cleanPart}`,
+    challengePath,
+    lastPart
+  ];
+
+  let found = null;
+  for (const c of candidates) {
+    if (dict[c]) {
+      found = dict[c];
+      break;
+    }
+  }
+
+  if (found) {
+    let count = '';
+    for (const [k, v] of Object.entries(CHALLENGE_COUNT_MAP)) {
+      if (lastPart.toLowerCase().includes(k.toLowerCase())) {
+        count = v;
+        break;
+      }
+    }
+
+    return found
+      .replace(/\|OPEN_COLOR\|.*?\|CLOSE_COLOR\|\s*/gi, '')
+      .replace(/\|COUNT\|\s*/g, count ? `${count} ` : '')
+      .replace(/\|[A-Z_]+\|/g, '')
+      .replace(/\s+/g, ' ')
+      .trim();
+  }
+
   if (CHALLENGE_FALLBACK_MAP[lastPart]) return CHALLENGE_FALLBACK_MAP[lastPart];
+  if (CHALLENGE_FALLBACK_MAP[cleanPart]) return CHALLENGE_FALLBACK_MAP[cleanPart];
 
   // Fallback camelCase formatter
   return lastPart
@@ -145,13 +238,14 @@ export default function CaviaTracker() {
     setLoading(true);
     setError(null);
     try {
-      const [worldStateRes, bountyRes, dictRes] = await Promise.all([
+      const [worldStateRes, bountyRes, oracleDictRes, exportPlusDictRes] = await Promise.all([
         fetch('https://oracle.browse.wf/worldState.min.json').then(r => r.ok ? r.json() : null),
         fetch('https://oracle.browse.wf/bounty-cycle').then(r => r.ok ? r.json() : null),
-        fetch('https://oracle.browse.wf/dicts/en.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+        fetch('https://oracle.browse.wf/dicts/en.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch('https://browse.wf/warframe-public-export-plus/dict.en.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))
       ]);
 
-      if (dictRes) setDictionary(dictRes);
+      setDictionary({ ...(exportPlusDictRes || {}), ...(oracleDictRes || {}) });
 
       if (bountyRes) {
         setBountyData(bountyRes);
@@ -310,11 +404,10 @@ export default function CaviaTracker() {
 
               {(() => {
                 const filteredHex = (bountyData?.bounties?.HexSyndicate || []).filter((item) => {
-                  const details = HEX_NODE_DETAILS_MAP[item.node];
-                  const challengeFormatted = formatChallengeName(item.challenge, dictionary).toLowerCase();
-                  const isLegacite = details ? details.name.toLowerCase().includes('legacite') : item.node === 'SolNode852';
-                  const isShellCracker = challengeFormatted.includes('shell cracker') || item.challenge.toLowerCase().includes('shellcracker');
-                  return isLegacite && isShellCracker;
+                  const isLegacyteHarvest = item.node === 'SolNode850';
+                  const isShellCracker = item.challenge.toLowerCase().includes('safecracker') ||
+                                         item.challenge.toLowerCase().includes('shellcracker');
+                  return isLegacyteHarvest && isShellCracker;
                 });
 
                 if (filteredHex.length > 0) {
@@ -322,8 +415,8 @@ export default function CaviaTracker() {
                     <ul className="cavia-bounty-list">
                       {filteredHex.map((item, idx) => {
                         const details = HEX_NODE_DETAILS_MAP[item.node] || {
-                          name: 'Legacite Harvest (Shell Cracker)',
-                          level: '55-60',
+                          name: 'Legacyte Harvest (Shell Cracker)',
+                          level: '65-70',
                           standingNormal: '3,000',
                           standingSteelPath: '4,500'
                         };
