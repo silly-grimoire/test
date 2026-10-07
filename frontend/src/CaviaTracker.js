@@ -90,30 +90,6 @@ const CHALLENGE_FALLBACK_MAP = {
   LichVaniaExplodingInfested: 'Defeat Exploding Infested'
 };
 
-const CHALLENGE_COUNT_MAP = {
-  LootCrates: 3,
-  KillVialedEnemy: 30,
-  KillMurmur: 150,
-  KillMurmurHard: 200,
-  KillVoidRig: 2,
-  KillVoidRigEasy: 2,
-  DestroyDecoration: 50,
-  DefenseActivatePillar: 2,
-  DefenseActivatePillarHard: 2,
-  RangedMechWeakpoint: 6,
-  CollectTears: 3,
-  DestroyDemolystLimbs: 4,
-  ActivateLohkSurge: 2,
-  AlchemyGrenadeElectric: 15,
-  AlchemyGrenadeFire: 15,
-  AlchemyGrenadeIce: 15,
-  AlchemyGrenadeToxin: 15,
-  KillFlyingMurmur: 15,
-  SafeCracker: 1,
-  DestroyBackpacks: 15,
-  DestroyProps: 15,
-  DestroyHazards: 10
-};
 
 const VARIABLE_NAME_FALLBACK = {
   ChannelDrain: 'Channel Drain',
@@ -132,72 +108,85 @@ const VARIABLE_DESC_FALLBACK = {
   NoPets: 'Companions are disabled during the mission.'
 };
 
-function formatChallengeName(challengePath, dict = {}) {
-  if (!challengePath) return 'Special Objective';
-  if (dict[challengePath]) return dict[challengePath];
+function toTitleCase(str) {
+  if (!str) return '';
+  return str.replace(/\w\S*/g, (txt) => txt.charAt(0).toUpperCase() + txt.substr(1).toLowerCase());
+}
 
-  const lastPart = challengePath.split('/').pop();
-  const cleanPart = lastPart.replace(/(Easy|Normal|Hard|VeryHard|Medium)Challenge$/, 'Challenge');
-  const withoutSuffix = lastPart.replace(/(Easy|Normal|Hard|VeryHard|Medium)?(Challenge)?$/, '');
-  const withChallenge = withoutSuffix + 'Challenge';
+const CAVIA_TIERS = [
+  { level: '55-60', normal: '1,000', sp: '1,500' },
+  { level: '65-70', normal: '2,000', sp: '3,000' },
+  { level: '75-80', normal: '3,000', sp: '4,500' },
+  { level: '95-100', normal: '4,000', sp: '6,000' },
+  { level: '115-120', normal: '5,000', sp: '7,500' }
+];
 
-  const candidates = [
-    // EntratiLab Desc
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${lastPart}_Desc`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${cleanPart}_Desc`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withChallenge}_Desc`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withoutSuffix}_Desc`,
-    // 1999 Desc
-    `/Lotus/Language/1999Bounties/Challenge_${lastPart}_Desc`,
-    `/Lotus/Language/1999Bounties/Challenge_${cleanPart}_Desc`,
-    `/Lotus/Language/1999Bounties/Challenge_${withChallenge}_Desc`,
-    `/Lotus/Language/1999Bounties/Challenge_${withoutSuffix}_Desc`,
-    // 1999 Name
-    `/Lotus/Language/1999Bounties/Challenge_${lastPart}_Name`,
-    `/Lotus/Language/1999Bounties/Challenge_${cleanPart}_Name`,
-    `/Lotus/Language/1999Bounties/Challenge_${withChallenge}_Name`,
-    `/Lotus/Language/1999Bounties/Challenge_${withoutSuffix}_Name`,
-    // EntratiLab Name
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${lastPart}_Name`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${cleanPart}_Name`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withChallenge}_Name`,
-    `/Lotus/Language/EntratiLab/EntratiGeneral/Challenge_${withoutSuffix}_Name`,
-    // Generic challenges
-    `/Lotus/Language/Challenges/${lastPart}`,
-    `/Lotus/Language/Challenges/${cleanPart}`,
-    challengePath,
-    lastPart
-  ];
-
-  let found = null;
-  for (const c of candidates) {
-    if (dict[c]) {
-      found = dict[c];
-      break;
-    }
+function getNodeDetails(nodeId, regions = {}, dict = {}, syndicate = 'cavia', bountyIndex = null) {
+  const node = regions[nodeId];
+  if (!node) {
+    const fallback = CAVIA_NODE_DETAILS_MAP[nodeId] || HEX_NODE_DETAILS_MAP[nodeId] || {
+      name: nodeId,
+      level: '55-60',
+      standingNormal: '1,000',
+      standingSteelPath: '1,500'
+    };
+    return fallback;
   }
 
-  if (found) {
-    let count = '';
-    for (const [k, v] of Object.entries(CHALLENGE_COUNT_MAP)) {
-      if (lastPart.toLowerCase().includes(k.toLowerCase())) {
-        count = v;
-        break;
-      }
-    }
+  const baseName = dict[node.name] || nodeId;
+  const missionName = dict[node.missionName];
+  const isSpecialHex = ['SolNode850', 'SolNode853', 'SolNode854', 'SolNode856'].includes(nodeId);
+  const displayName = missionName && !isSpecialHex
+    ? `${baseName} (${toTitleCase(missionName)})`
+    : baseName;
 
-    return found
-      .replace(/\|OPEN_COLOR\|.*?\|CLOSE_COLOR\|\s*/gi, '')
-      .replace(/\|COUNT\|\s*/g, count ? `${count} ` : '')
-      .replace(/\|[A-Z_]+\|/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
+  // For Cavia bounties, the level tier & standing are defined by its slot/tier position in the bounty list:
+  // Slot 0 = 55-60, Slot 1 = 65-70, Slot 2 = 75-80, Slot 3 = 95-100, Slot 4 = 115-120
+  if (syndicate === 'cavia') {
+    const tier = (bountyIndex != null && CAVIA_TIERS[bountyIndex])
+      ? CAVIA_TIERS[bountyIndex]
+      : (CAVIA_TIERS[CAVIA_NODE_DETAILS_MAP[nodeId]?.tier || 0] || CAVIA_TIERS[0]);
+
+    return {
+      name: displayName,
+      level: tier.level,
+      standingNormal: tier.normal,
+      standingSteelPath: tier.sp
+    };
   }
 
+  // Hex bounties (e.g. Legacyte Harvest Shell Cracker)
+  const minLevel = Number(node.minEnemyLevel) || 65;
+  const maxLevel = Number(node.maxEnemyLevel) || 70;
+  return {
+    name: displayName,
+    level: `${minLevel}-${maxLevel}`,
+    standingNormal: '3,000',
+    standingSteelPath: '4,500'
+  };
+}
+
+function formatChallenge(challengeId, challenges = {}, dict = {}) {
+  if (!challengeId) return 'Special Objective';
+  const ch = challenges[challengeId];
+  if (ch) {
+    const rawDesc = dict[ch.description];
+    if (rawDesc) {
+      const lastLine = rawDesc.split('\r\n').pop().split('\n').pop();
+      const count = ch.requiredCount != null ? ch.requiredCount.toString() : '';
+      return lastLine
+        .replace(/\|OPEN_COLOR\|.*?\|CLOSE_COLOR\|\s*/gi, '')
+        .replace(/\|COUNT\|\s*/g, count ? `${count} ` : '')
+        .replace(/\|[A-Z_]+\|/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+    if (dict[ch.name]) return dict[ch.name];
+  }
+
+  // Fallback to static resolution if challenge export not loaded yet
+  const lastPart = challengeId.split('/').pop();
   if (CHALLENGE_FALLBACK_MAP[lastPart]) return CHALLENGE_FALLBACK_MAP[lastPart];
-  if (CHALLENGE_FALLBACK_MAP[cleanPart]) return CHALLENGE_FALLBACK_MAP[cleanPart];
-
-  // Fallback camelCase formatter
   return lastPart
     .replace(/^EntratiLab/, '')
     .replace(/^LichVania/, '')
@@ -232,20 +221,33 @@ export default function CaviaTracker() {
   const [bountyData, setBountyData] = useState(null);
   const [deepArchimedea, setDeepArchimedea] = useState(null);
   const [dictionary, setDictionary] = useState({});
+  const [regionsData, setRegionsData] = useState({});
+  const [challengesData, setChallengesData] = useState({});
   const [, setTick] = useState(0);
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [worldStateRes, bountyRes, oracleDictRes, exportPlusDictRes] = await Promise.all([
+      const [
+        worldStateRes,
+        bountyRes,
+        oracleDictRes,
+        exportPlusDictRes,
+        regionsRes,
+        challengesRes
+      ] = await Promise.all([
         fetch('https://oracle.browse.wf/worldState.min.json').then(r => r.ok ? r.json() : null),
         fetch('https://oracle.browse.wf/bounty-cycle').then(r => r.ok ? r.json() : null),
         fetch('https://oracle.browse.wf/dicts/en.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
-        fetch('https://browse.wf/warframe-public-export-plus/dict.en.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))
+        fetch('https://browse.wf/warframe-public-export-plus/dict.en.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch('https://browse.wf/warframe-public-export-plus/ExportRegions.json').then(r => r.ok ? r.json() : {}).catch(() => ({})),
+        fetch('https://browse.wf/warframe-public-export-plus/ExportChallenges.json').then(r => r.ok ? r.json() : {}).catch(() => ({}))
       ]);
 
       setDictionary({ ...(exportPlusDictRes || {}), ...(oracleDictRes || {}) });
+      if (regionsRes) setRegionsData(regionsRes);
+      if (challengesRes) setChallengesData(challengesRes);
 
       if (bountyRes) {
         setBountyData(bountyRes);
@@ -357,17 +359,13 @@ export default function CaviaTracker() {
               {bountyData?.bounties?.EntratiLabSyndicate ? (
                 <ul className="cavia-bounty-list">
                   {bountyData.bounties.EntratiLabSyndicate
-                    .filter((item) => {
-                      const details = CAVIA_NODE_DETAILS_MAP[item.node];
-                      return details ? details.name.toLowerCase().includes('exterminate') : item.node === 'SolNode716';
+                    .map((item, originalIndex) => ({ item, originalIndex }))
+                    .filter(({ item }) => {
+                      const details = getNodeDetails(item.node, regionsData, dictionary);
+                      return details.name.toLowerCase().includes('exterminate') || item.node === 'SolNode716';
                     })
-                    .map((item, idx) => {
-                      const details = CAVIA_NODE_DETAILS_MAP[item.node] || {
-                        name: item.node,
-                        level: '55-120',
-                        standingNormal: '1,000+',
-                        standingSteelPath: '1,500+'
-                      };
+                    .map(({ item, originalIndex }, idx) => {
+                      const details = getNodeDetails(item.node, regionsData, dictionary, 'cavia', originalIndex);
                       return (
                         <li key={idx} className="cavia-bounty-item">
                           <div className="cavia-bounty-main">
@@ -376,7 +374,7 @@ export default function CaviaTracker() {
                               <span className="cavia-level-tag">Lvl {details.level}</span>
                             </div>
                             <span className="cavia-challenge-desc">
-                              {formatChallengeName(item.challenge, dictionary)}
+                              {formatChallenge(item.challenge, challengesData, dictionary)}
                             </span>
                           </div>
                           <div className="cavia-standing-row">
@@ -405,7 +403,11 @@ export default function CaviaTracker() {
               {(() => {
                 const filteredHex = (bountyData?.bounties?.HexSyndicate || []).filter((item) => {
                   const isLegacyteHarvest = item.node === 'SolNode850';
-                  const isShellCracker = item.challenge.toLowerCase().includes('safecracker') ||
+                  const challengeText = formatChallenge(item.challenge, challengesData, dictionary).toLowerCase();
+                  const isShellCracker = challengeText.includes('safecracker') ||
+                                         challengeText.includes('shell cracker') ||
+                                         challengeText.includes('techrot cache') ||
+                                         item.challenge.toLowerCase().includes('safecracker') ||
                                          item.challenge.toLowerCase().includes('shellcracker');
                   return isLegacyteHarvest && isShellCracker;
                 });
@@ -414,12 +416,7 @@ export default function CaviaTracker() {
                   return (
                     <ul className="cavia-bounty-list">
                       {filteredHex.map((item, idx) => {
-                        const details = HEX_NODE_DETAILS_MAP[item.node] || {
-                          name: 'Legacyte Harvest (Shell Cracker)',
-                          level: '65-70',
-                          standingNormal: '3,000',
-                          standingSteelPath: '4,500'
-                        };
+                        const details = getNodeDetails(item.node, regionsData, dictionary, 'hex');
                         return (
                           <li key={idx} className="cavia-bounty-item">
                             <div className="cavia-bounty-main">
@@ -428,7 +425,7 @@ export default function CaviaTracker() {
                                 <span className="cavia-level-tag">Lvl {details.level}</span>
                               </div>
                               <span className="cavia-challenge-desc">
-                                {formatChallengeName(item.challenge, dictionary)}
+                                {formatChallenge(item.challenge, challengesData, dictionary)}
                               </span>
                             </div>
                             <div className="cavia-standing-row">
