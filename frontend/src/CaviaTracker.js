@@ -214,7 +214,7 @@ function formatCountdown(expiryMs) {
 
 export default function CaviaTracker() {
   const [isCollapsed, setIsCollapsed] = useState(false);
-  const [isArchimedeaCollapsed, setIsArchimedeaCollapsed] = useState(false);
+  const [isArchimedeaCollapsed, setIsArchimedeaCollapsed] = useState(true);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   
