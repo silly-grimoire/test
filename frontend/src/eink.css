@@ -69,6 +69,7 @@ body.eink-theme {
 /* Buttons & Toggles */
 .eink-theme .save-toggle-btn,
 .eink-theme .toggle-completed-btn,
+.eink-theme .reset-btn,
 .eink-theme .settings-btn,
 .eink-theme .logout-btn,
 .eink-theme .tab-btn,
@@ -90,6 +91,7 @@ body.eink-theme {
 .eink-theme .save-toggle-btn:hover,
 .eink-theme .save-toggle-btn.active,
 .eink-theme .toggle-completed-btn:hover,
+.eink-theme .reset-btn:hover,
 .eink-theme .settings-btn:hover,
 .eink-theme .logout-btn:hover,
 .eink-theme .tab-btn:hover,

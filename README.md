@@ -54,6 +54,7 @@ REACT_APP_PASSWORD_HASH="your-sha256-hash-here"
 
 # JSONBin Configuration (to use JSONBin as a permanent cloud database instead of localStorage)
 REACT_APP_JSONBIN_BIN_ID="your-bin-id"
+REACT_APP_JSONBIN_CLEANING_BIN_ID="your-cleaning-bin-id"
 REACT_APP_JSONBIN_API_KEY="your-api-key"
 REACT_APP_JSONBIN_ACCESS_KEY="your-access-key"
 ```

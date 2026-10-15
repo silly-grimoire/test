@@ -1,12 +1,13 @@
 {
   "files": {
-    "main.css": "./static/css/main.46585973.css",
-    "main.js": "./static/js/main.e5b118d1.js",
+    "main.css": "./static/css/main.6f20fe64.css",
+    "main.js": "./static/js/main.d918217a.js",
     "static/js/685.e24429fc.chunk.js": "./static/js/685.e24429fc.chunk.js",
+    "static/media/vitruvian_main_bg.jpg": "./static/media/vitruvian_main_bg.d7efc5f233f8cd070614.jpg",
     "index.html": "./index.html"
   },
   "entrypoints": [
-    "static/css/main.46585973.css",
-    "static/js/main.e5b118d1.js"
+    "static/css/main.6f20fe64.css",
+    "static/js/main.d918217a.js"
   ]
 }

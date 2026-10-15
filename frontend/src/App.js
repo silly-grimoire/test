@@ -1,66 +1,15 @@
-import React, { useEffect, useState, useRef } from 'react';
-import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import './App.css';
 import './eink.css';
 import { hashPassword } from './cryptoUtils';
 import RandomPic from './RandomPic';
 import CaviaTracker from './CaviaTracker';
-
-
-const getJsonBinConfig = () => {
-  const envBinId = process.env.REACT_APP_JSONBIN_BIN_ID;
-  const envApiKey = process.env.REACT_APP_JSONBIN_API_KEY;
-  const envAccessKey = process.env.REACT_APP_JSONBIN_ACCESS_KEY;
-
-  const binId = envBinId || "";
-  const apiKey = envApiKey || "";
-  const accessKey = envAccessKey || "";
-  const isEnabled = !!binId && !!apiKey;
-
-  return { binId, apiKey, accessKey, isEnabled };
-};
-
-function saveTasksToJSONBin(rows) {
-  const config = getJsonBinConfig();
-  if (!config.isEnabled) {
-    console.log("saveTasksToJSONBin: JSONBin configuration is disabled or incomplete. Skipping upload.");
-    window.dispatchEvent(new CustomEvent('jsonbin-status', { 
-      detail: { action: 'save_error', error: "JSONBin is not configured in Settings." } 
-    }));
-    return;
-  }
-  window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_start' } }));
-  console.log(`saveTasksToJSONBin: Uploading ${rows.length} tasks to JSONBin (Bin ID: ${config.binId})...`);
-  const headers = {
-    'Content-Type': 'application/json',
-    'X-Master-Key': config.apiKey
-  };
-  if (config.accessKey) {
-    headers['X-Access-Key'] = config.accessKey;
-  }
-  fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
-    method: 'PUT',
-    headers: headers,
-    body: JSON.stringify(rows)
-  })
-  .then(res => {
-    if (!res.ok) throw new Error("JSONBin save failed with status code " + res.status);
-    return res.json();
-  })
-  .then(data => {
-    console.log("saveTasksToJSONBin: Tasks successfully synced with JSONBin. Response:", data);
-    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_success', error: "" } }));
-  })
-  .catch(err => {
-    console.error("saveTasksToJSONBin: Error syncing with JSONBin:", err);
-    window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { action: 'save_error', error: err.message } }));
-  });
-}
+import TodoDashboard from './TodoDashboard';
+import { getJsonBinConfig, CLEANING_COLUMNS } from './jsonBinService';
 
 document.body.className = localStorage.getItem('eink_mode') === 'true' ? 'eink-theme' : 'dark-theme'; // Initial body theme
 
 const EyeIcon = () => (
-// ... (rest of icons)
   <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
     <circle cx="12" cy="12" r="3"></circle>
@@ -74,167 +23,7 @@ const EyeOffIcon = () => (
   </svg>
 );
 
-const TrashIcon = () => (
-  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-    <polyline points="3 6 5 6 21 6"></polyline>
-    <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-    <line x1="10" y1="11" x2="10" y2="17"></line>
-    <line x1="14" y1="11" x2="14" y2="17"></line>
-  </svg>
-);
-
-function processTasks(rows) {
-  const dashboard = {
-    "Weeklies": [],
-    "Dailies": [],
-    "Other / long term": [],
-    "Materials": []
-  };
-
-  const parseBoolean = (val) => val && val.toUpperCase() === "TRUE";
-
-  // Auto-reset check
-  const now = new Date();
-  const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
-  
-  // Calculate last Monday
-  const day = now.getDay();
-  const diff = now.getDate() - day + (day === 0 ? -6 : 1);
-  const lastMonday = new Date(now.setDate(diff));
-  lastMonday.setHours(0, 0, 0, 0);
-
-  rows.forEach(row => {
-    const isDone = parseBoolean(row.is_done);
-    const lastDoneStr = row.last_done_date;
-    const col = row.column;
-    
-    if (isDone && lastDoneStr) {
-      const parts = lastDoneStr.split('-');
-      const lastDoneDate = new Date(parts[0], parts[1] - 1, parts[2]);
-      lastDoneDate.setHours(0, 0, 0, 0);
-
-      if (col === "Dailies" && lastDoneStr !== todayStr) {
-        row.is_done = "FALSE";
-        if (row.task_type === "progress") {
-          row.amount_now = "0";
-        }
-      } else if (col === "Weeklies" && lastDoneDate < lastMonday) {
-        row.is_done = "FALSE";
-        if (row.task_type === "progress") {
-          row.amount_now = "0";
-        }
-      }
-    }
-  });
-
-//  if (updated) {
-//    const config = getJsonBinConfig();
-//    if (config.isEnabled) {
-//      saveTasksToJSONBin(rows);
-//    }
-//  }
-
-  // Sort rows
-  rows.sort((a, b) => {
-    const colA = a.column || "";
-    const colB = b.column || "";
-    const catA = a.category || "";
-    const catB = b.category || "";
-    const ordA = parseInt(a.order) || 0;
-    const ordB = parseInt(b.order) || 0;
-    if (colA !== colB) return colA.localeCompare(colB);
-    if (catA !== catB) return catA.localeCompare(catB);
-    return ordA - ordB;
-  });
-
-  const currentSections = { "Weeklies": null, "Dailies": null, "Other / long term": null, "Materials": null };
-  const parentRegistry = {};
-
-  rows.forEach((row, idx) => {
-    const col = row.column;
-    const taskName = row.task_name;
-    const isSubtask = parseBoolean(row.is_subtask);
-    const isAlert = parseBoolean(row.is_alert);
-    const isDone = parseBoolean(row.is_done);
-    const category = row.category;
-    const taskType = row.task_type || "checklist";
-    const amountNow = parseInt(row.amount_now) || 0;
-    const amountTotal = parseInt(row.amount_total) || 1;
-    const order = parseInt(row.order) || 0;
-
-    if (!col || !dashboard[col]) return;
-
-    if (!isSubtask) {
-      if (category && currentSections[col] !== category) {
-        currentSections[col] = category;
-        dashboard[col].push({
-          id: `sec_${col}_${category.replace(/ /g, '_')}_${idx}`,
-          name: category,
-          isSectionTitle: true,
-          order: order
-        });
-      }
-
-      const newTask = {
-        id: row.id,
-        name: taskName,
-        isHeader: (taskName === category) || (col === "Weeklies" && category !== ""),
-        isAlert: isAlert,
-        is_done: isDone,
-        task_type: taskType,
-        amount_now: amountNow,
-        amount_total: amountTotal,
-        order: order,
-        subtasks: []
-      };
-      parentRegistry[`${col}_${taskName}`] = newTask;
-      dashboard[col].push(newTask);
-    }
-  });
-
-  rows.forEach((row) => {
-    const col = row.column;
-    const taskName = row.task_name;
-    const isSubtask = parseBoolean(row.is_subtask);
-    const parentName = row.parent_task;
-    const isAlert = parseBoolean(row.is_alert);
-    const isDone = parseBoolean(row.is_done);
-    const taskType = row.task_type || "checklist";
-    const amountNow = parseInt(row.amount_now) || 0;
-    const amountTotal = parseInt(row.amount_total) || 1;
-    const order = parseInt(row.order) || 0;
-
-    if (isSubtask && col && dashboard[col]) {
-      const registryKey = `${col}_${parentName}`;
-      if (parentRegistry[registryKey]) {
-        parentRegistry[registryKey].subtasks.push({
-          id: row.id,
-          name: taskName,
-          isAlert: isAlert,
-          is_done: isDone,
-          task_type: taskType,
-          amount_now: amountNow,
-          amount_total: amountTotal,
-          order: order
-        });
-      }
-    }
-  });
-
-  Object.keys(dashboard).forEach(col => {
-    dashboard[col].forEach(task => {
-      if (!task.isSectionTitle && task.subtasks) {
-        task.subtasks.sort((a, b) => (a.order || 0) - (b.order || 0));
-      }
-    });
-  });
-
-  return dashboard;
-}
-
 function App() {
-  const [columns, setColumns] = useState({});
-  const [taskRows, setTaskRows] = useState([]);
   const [isEinkMode, setIsEinkMode] = useState(() => localStorage.getItem('eink_mode') === 'true');
 
   useEffect(() => {
@@ -247,16 +36,8 @@ function App() {
     }
     localStorage.setItem('eink_mode', isEinkMode);
   }, [isEinkMode]);
-  const [collapsedSections, setCollapsedSections] = useState({}); // New state for collapsed sections
-  const [showCompleted, setShowCompleted] = useState(false);
-  const [addingToColumn, setAddingToColumn] = useState(null); // Track which column is showing the input
-  const [addingToCategory, setAddingToCategory] = useState(null); // Track which category is showing the input
-  const [newCategoryTaskName, setNewCategoryTaskName] = useState("");
-  const [addingSubtaskTo, setAddingSubtaskTo] = useState(null); // Track which task ID is adding a subtask
 
-  const [newTaskName, setNewTaskName] = useState("");
-  const [newSubtaskName, setNewSubtaskName] = useState("");
-  const [newTaskType, setNewTaskType] = useState("checklist"); // New state for task type
+  const [showCompleted, setShowCompleted] = useState(false);
 
   // Authentication states
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -268,6 +49,9 @@ function App() {
   const [fatalDbError, setFatalDbError] = useState("");
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash;
+    if (hash === '#/cleaning' || hash === '#/stadning') {
+      return 'cleaning';
+    }
     if (hash === '#/randimgs' || hash === '#/random-pic') {
       return 'random-pic';
     }
@@ -277,26 +61,28 @@ function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash;
-      if (hash === '#/randimgs' || hash === '#/random-pic') {
+      if (hash === '#/cleaning' || hash === '#/stadning') {
+        setActiveTab('cleaning');
+      } else if (hash === '#/randimgs' || hash === '#/random-pic') {
         setActiveTab('random-pic');
       } else {
         setActiveTab('todo');
       }
     };
     window.addEventListener('hashchange', handleHashChange);
-    // Set default hash if empty
     if (!window.location.hash) {
       window.location.hash = '#/';
+    } else {
+      handleHashChange();
     }
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-
-
-
   const [toast, setToast] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
   const [autoSaveEnabled, setAutoSaveEnabled] = useState(false);
+  const [saveTrigger, setSaveTrigger] = useState(0);
+  const [cleaningResetTrigger, setCleaningResetTrigger] = useState(0);
   const autoSaveRef = useRef(false);
 
   useEffect(() => {
@@ -309,9 +95,17 @@ function App() {
     autoSaveRef.current = nextState;
 
     if (nextState) {
-      saveTasksToJSONBin(taskRows);
+      setSaveTrigger(prev => prev + 1);
     } else {
       setToast({ message: 'Auto-Save turned OFF', type: 'info' });
+      setTimeout(() => setToast(null), 3000);
+    }
+  };
+
+  const handleResetCleaningTasks = () => {
+    if (window.confirm("Are you sure you want to reset all cleaning tasks to not done?")) {
+      setCleaningResetTrigger(prev => prev + 1);
+      setToast({ message: 'All cleaning tasks have been reset to not done.', type: 'info' });
       setTimeout(() => setToast(null), 3000);
     }
   };
@@ -319,36 +113,36 @@ function App() {
   useEffect(() => {
     let toastTimer;
     const handleStatus = (e) => {
-      const { action, error, isFatal } = e.detail || {};
-      const errMsg = error;
+      const { action, error, isFatal, source } = e.detail || {};
+      const prefix = source ? `[${source}] ` : '';
 
       if (action === 'save_start') {
         setIsSaving(true);
-        setToast({ message: 'Saving tasks to JSONBin...', type: 'info' });
+        setToast({ message: `${prefix}Saving tasks to JSONBin...`, type: 'info' });
       } else if (action === 'save_success') {
         setIsSaving(false);
-        const msg = autoSaveRef.current ? 'Auto-Save: Synced to JSONBin!' : 'Successfully saved to JSONBin!';
+        const msg = autoSaveRef.current ? `${prefix}Auto-Save: Synced to JSONBin!` : `${prefix}Successfully saved to JSONBin!`;
         setToast({ message: msg, type: 'success' });
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setToast(null), 3000);
       } else if (action === 'save_error') {
         setIsSaving(false);
-        const msg = errMsg ? (
-          errMsg.includes("401") ? "Unauthorized (401). Check API Key in Settings." :
-          errMsg.includes("404") ? "Bin Not Found (404). Check Bin ID in Settings." :
-          errMsg
+        const msg = error ? (
+          error.includes("401") ? "Unauthorized (401). Check API Key in Settings." :
+          error.includes("404") ? "Bin Not Found (404). Check Bin ID in Settings." :
+          error
         ) : "Unknown save error";
-        setToast({ message: 'Save Failed: ' + msg, type: 'error' });
+        setToast({ message: `${prefix}Save Failed: ` + msg, type: 'error' });
         clearTimeout(toastTimer);
         toastTimer = setTimeout(() => setToast(null), 4000);
-      } else if (errMsg) {
+      } else if (error) {
         let msg = "";
-        if (errMsg.includes("status 401") || errMsg.includes("status code 401")) {
+        if (error.includes("status 401") || error.includes("status code 401")) {
           msg = "Database Sync Error: Unauthorized (401). Please check your API Key in Settings.";
-        } else if (errMsg.includes("status 404") || errMsg.includes("status code 404")) {
+        } else if (error.includes("status 404") || error.includes("status code 404")) {
           msg = "Database Sync Error: Bin Not Found (404). Please check your Bin ID in Settings.";
         } else {
-          msg = "Database Sync Error: " + errMsg;
+          msg = `Database Sync Error: ${error}`;
         }
         if (isFatal) {
           setFatalDbError(msg);
@@ -367,97 +161,18 @@ function App() {
     };
   }, []);
 
-
-
-  const toggleSection = (columnTitle, sectionId) => {
-    setCollapsedSections(prev => ({
-        ...prev,
-        [`${columnTitle}-${sectionId}`]: !prev[`${columnTitle}-${sectionId}`]
-    }));
-  };
-
-  const saveLocalData = (rows) => {
-    setTaskRows(rows);
-    const processed = processTasks(rows);
-    setColumns(processed);
-
-    if (autoSaveRef.current) {
-      saveTasksToJSONBin(rows);
-    }
-  };
-
-  const getLocalData = () => {
-    return taskRows;
-  };
-
-  const loadLocalTasks = () => {
-    const config = getJsonBinConfig();
-    if (config.isEnabled) {
-      console.log(`loadLocalTasks: Fetching tasks from JSONBin cloud database (Bin ID: ${config.binId})...`);
-      const headers = {
-        'X-Master-Key': config.apiKey,
-        'X-Bin-Meta': 'false'
-      };
-      if (config.accessKey) {
-        headers['X-Access-Key'] = config.accessKey;
-      }
-      fetch(`https://api.jsonbin.io/v3/b/${config.binId}`, {
-        headers: headers
-      })
-      .then(res => {
-        if (!res.ok) throw new Error("JSONBin fetch failed with status " + res.status);
-        return res.json();
-      })
-      .then(data => {
-        const rows = data.record || data;
-        console.log(`loadLocalTasks: Successfully fetched ${rows.length} tasks from JSONBin.`);
-        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: "" } }));
-        setTaskRows(rows);
-        const processed = processTasks(rows);
-        setColumns(processed);
-      })
-      .catch(err => {
-        console.error("loadLocalTasks: Error fetching from JSONBin. Setting task list to empty.", err);
-        window.dispatchEvent(new CustomEvent('jsonbin-status', { detail: { error: err.message, isFatal: true } }));
-        setTaskRows([]);
-        setColumns({
-          "Weeklies": [],
-          "Dailies": [],
-          "Other / long term": [],
-          "Materials": []
-        });
-      });
-    } else {
-      console.log("loadLocalTasks: JSONBin is not configured. Starting with empty task list.");
-      setTaskRows([]);
-      setColumns({
-        "Weeklies": [],
-        "Dailies": [],
-        "Other / long term": [],
-        "Materials": []
-      });
-    }
-  };
-
-  const fetchTasks = () => {
-    console.log("fetchTasks: Initializing task load.");
-    loadLocalTasks();
-  };
+  const warframeConfig = useMemo(() => getJsonBinConfig('default'), []);
+  const cleaningConfig = useMemo(() => getJsonBinConfig('cleaning'), []);
 
   useEffect(() => {
     const checkAuthentication = async () => {
       const requiredHash = process.env.REACT_APP_PASSWORD_HASH;
       if (!requiredHash) {
-        // If no password hash is configured, bypass login screen
         setIsAuthenticated(true);
-        fetchTasks();
-      } else {
-
       }
       setCheckingAuth(false);
     };
     checkAuthentication();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleLogin = async (e) => {
@@ -466,17 +181,14 @@ function App() {
     const requiredHash = process.env.REACT_APP_PASSWORD_HASH;
     if (!requiredHash) {
       setIsAuthenticated(true);
-      fetchTasks();
       return;
     }
 
     try {
       const hashedInput = await hashPassword(passwordInput);
-      // Support both the SHA-256 hash and plain-text passwords in the secret configuration
       if (hashedInput === requiredHash || passwordInput === requiredHash) {
         setIsAuthenticated(true);
         setPasswordInput("");
-        fetchTasks();
       } else {
         setAuthError("Incorrect password. Please try again.");
       }
@@ -488,237 +200,6 @@ function App() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
-  };
-
-
-  const renameTask = (taskId, newName) => {
-    const rows = getLocalData();
-    let oldName = "";
-    rows.forEach(row => {
-      if (row.id === taskId) {
-        oldName = row.task_name;
-        row.task_name = newName;
-      }
-    });
-    if (oldName) {
-      rows.forEach(row => {
-        if (row.is_subtask === "TRUE" && row.parent_task === oldName) {
-          row.parent_task = newName;
-        }
-      });
-    }
-    saveLocalData(rows);
-  };
-
-  const handleTaskNameChange = (columnTitle, taskId, newName) => {
-    // Update local state to reflect change immediately
-    const updatedColumns = { ...columns };
-    
-    // Find and update the task name in the local state
-    const findAndUpdate = (list) => {
-      list.forEach(task => {
-        if (task.id === taskId) {
-          task.name = newName;
-        } else if (task.subtasks) {
-          findAndUpdate(task.subtasks);
-        }
-      });
-    };
-    findAndUpdate(updatedColumns[columnTitle]);
-    setColumns(updatedColumns);
-  };
-
-  const handleUpdateProgress = (taskId, amountNow, amountTotal) => {
-    const rows = getLocalData();
-    rows.forEach(row => {
-      if (row.id === taskId) {
-        row.amount_now = String(amountNow);
-        row.amount_total = String(amountTotal);
-        if (parseInt(amountNow) >= parseInt(amountTotal)) {
-          row.is_done = "TRUE";
-          row.last_done_date = new Date().toISOString().split('T')[0];
-        } else {
-          row.is_done = "FALSE";
-        }
-      }
-    });
-    saveLocalData(rows);
-  };
-
-  const handleLocalProgressChange = (columnTitle, taskId, field, value) => {
-    const updatedColumns = { ...columns };
-    const findAndUpdate = (list) => {
-      list.forEach(task => {
-        if (task.id === taskId) {
-          task[field] = value;
-        } else if (task.subtasks) {
-          findAndUpdate(task.subtasks);
-        }
-      });
-    };
-    findAndUpdate(updatedColumns[columnTitle]);
-    setColumns(updatedColumns);
-  };
-
-  const toggleTask = (taskId, currentState) => {
-    const newState = !currentState;
-    const rows = getLocalData();
-    rows.forEach(row => {
-      if (row.id === taskId) {
-        row.is_done = newState ? "TRUE" : "FALSE";
-        if (newState) {
-          row.last_done_date = new Date().toISOString().split('T')[0];
-          if (row.task_type === "progress") {
-            row.amount_now = row.amount_total;
-          }
-        } else {
-          if (row.task_type === "progress") {
-            row.amount_now = "0";
-          }
-        }
-      }
-    });
-    saveLocalData(rows);
-  };
-
-  const deleteTask = (taskId) => {
-    console.log("Attempting to delete task:", taskId);
-    const rows = getLocalData();
-    const filtered = rows.filter(r => r.id !== taskId);
-    saveLocalData(filtered);
-  };
-
-  const handleAddTask = (columnTitle) => {
-    if (!newTaskName.trim()) return;
-
-    const rows = getLocalData();
-    let maxOrder = -1;
-    rows.forEach(r => {
-      if (r.column === columnTitle && r.category === "") {
-        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-      }
-    });
-    const newRow = {
-      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-      column: columnTitle,
-      category: "",
-      task_name: newTaskName,
-      is_subtask: "FALSE",
-      parent_task: "",
-      is_alert: "FALSE",
-      is_done: "FALSE",
-      last_done_date: "",
-      task_type: newTaskType,
-      amount_now: "0",
-      amount_total: newTaskType === 'progress' ? "100" : "1",
-      order: String(maxOrder + 1)
-    };
-    rows.push(newRow);
-    saveLocalData(rows);
-    setNewTaskName("");
-    setAddingToColumn(null);
-    setNewTaskType("checklist");
-  };
-
-  const handleAddTaskInCategory = (columnTitle, category) => {
-    if (!newCategoryTaskName.trim()) return;
-
-    const rows = getLocalData();
-    let maxOrder = -1;
-    rows.forEach(r => {
-      if (r.column === columnTitle && r.category === category) {
-        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-      }
-    });
-    const newRow = {
-      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-      column: columnTitle,
-      category: category,
-      task_name: newCategoryTaskName,
-      is_subtask: "FALSE",
-      parent_task: "",
-      is_alert: "FALSE",
-      is_done: "FALSE",
-      last_done_date: "",
-      task_type: newTaskType,
-      amount_now: "0",
-      amount_total: newTaskType === 'progress' ? "100" : "1",
-      order: String(maxOrder + 1)
-    };
-    rows.push(newRow);
-    saveLocalData(rows);
-    setNewCategoryTaskName("");
-    setAddingToCategory(null);
-    setNewTaskType("checklist");
-  };
-
-  const handleAddSubtask = (columnTitle, parentName) => {
-    if (!newSubtaskName.trim()) return;
-
-    const rows = getLocalData();
-    let maxOrder = -1;
-    rows.forEach(r => {
-      if (r.column === columnTitle && r.is_subtask === "TRUE" && r.parent_task === parentName) {
-        maxOrder = Math.max(maxOrder, parseInt(r.order) || 0);
-      }
-    });
-    const newRow = {
-      id: crypto.randomUUID ? crypto.randomUUID() : Math.random().toString(36).substring(2, 15),
-      column: columnTitle,
-      category: "",
-      task_name: newSubtaskName,
-      is_subtask: "TRUE",
-      parent_task: parentName,
-      is_alert: "FALSE",
-      is_done: "FALSE",
-      last_done_date: "",
-      task_type: newTaskType,
-      amount_now: "0",
-      amount_total: newTaskType === 'progress' ? "100" : "1",
-      order: String(maxOrder + 1)
-    };
-    rows.push(newRow);
-    saveLocalData(rows);
-    setNewSubtaskName("");
-    setAddingSubtaskTo(null);
-    setNewTaskType("checklist");
-  };
-
-  const onDragEnd = (result) => {
-    const { source, destination } = result;
-    if (!destination) return;
-    if (source.droppableId === destination.droppableId && source.index === destination.index) return;
-
-    const columnTitle = source.droppableId;
-    const newItems = Array.from(columns[columnTitle]);
-    const [reorderedItem] = newItems.splice(source.index, 1);
-    newItems.splice(destination.index, 0, reorderedItem);
-
-    const updatedColumns = {
-      ...columns,
-      [columnTitle]: newItems,
-    };
-    setColumns(updatedColumns);
-
-    // Sync order
-    let currentCategory = "";
-    const taskMap = {};
-    newItems.forEach((item, idx) => {
-      if (item.isSectionTitle) {
-        currentCategory = item.name;
-      } else {
-        taskMap[item.id] = { order: idx, category: currentCategory };
-      }
-    });
-
-    const rows = getLocalData();
-    rows.forEach(row => {
-      if (row.id in taskMap) {
-        row.order = String(taskMap[row.id].order);
-        row.category = taskMap[row.id].category;
-      }
-    });
-    saveLocalData(rows);
   };
 
   if (checkingAuth) {
@@ -767,18 +248,33 @@ function App() {
         <div className="tab-container">
           <button 
             className={`tab-btn ${activeTab === 'todo' ? 'active' : ''}`}
-            onClick={() => setActiveTab('todo')}
+            onClick={() => {
+              setActiveTab('todo');
+              window.location.hash = '#/';
+            }}
           >
             📝 Todo List
           </button>
           <button 
+            className={`tab-btn ${activeTab === 'cleaning' ? 'active' : ''}`}
+            onClick={() => {
+              setActiveTab('cleaning');
+              window.location.hash = '#/stadning';
+            }}
+          >
+            🧹 Städning
+          </button>
+          <button 
             className={`tab-btn ${activeTab === 'random-pic' ? 'active' : ''}`}
-            onClick={() => setActiveTab('random-pic')}
+            onClick={() => {
+              setActiveTab('random-pic');
+              window.location.hash = '#/random-pic';
+            }}
           >
             🖼️ Random Images
           </button>
         </div>
-        {activeTab === 'todo' && (
+        {(activeTab === 'todo' || activeTab === 'cleaning') && (
           <>
             <button 
               className={`save-toggle-btn ${autoSaveEnabled ? 'active' : ''} ${isSaving ? 'saving' : ''}`}
@@ -797,6 +293,15 @@ function App() {
             >
               {showCompleted ? <EyeIcon /> : <EyeOffIcon />}
             </button>
+            {activeTab === 'cleaning' && (
+              <button 
+                className="reset-btn" 
+                onClick={handleResetCleaningTasks}
+                title="Reset all tasks to not done"
+              >
+                🔄 Reset
+              </button>
+            )}
           </>
         )}
         <button 
@@ -837,371 +342,40 @@ function App() {
         </div>
       )}
 
-      
       {fatalDbError ? (
         <div className="fatal-error-screen" style={{ textAlign: 'center', marginTop: '100px', color: '#ff6b6b' }}>
           <h2>Failed to load database</h2>
           <p>{fatalDbError}</p>
           <button onClick={() => window.location.reload()} style={{ padding: '10px 20px', cursor: 'pointer', background: '#333', color: '#fff', border: '1px solid #555', borderRadius: '4px', marginTop: '20px' }}>Retry</button>
         </div>
-      ) : activeTab === 'todo' ? (
-        <>
-          <DragDropContext onDragEnd={onDragEnd}>
-
-          <div className="dashboard-container">
-          {Object.keys(columns).map((columnTitle) => (
-            <div key={columnTitle} className="task-card">
-              <h2>{columnTitle}</h2>
-
-              <Droppable droppableId={columnTitle}>
-                {(provided) => (
-                  <div 
-                    className="task-list"
-                    {...provided.droppableProps}
-                    ref={provided.innerRef}
-                  >
-                    {(() => {
-                      let currentSection = null;
-                      return columns[columnTitle].map((task, index) => {
-                        if (task.isSectionTitle) {
-                          currentSection = task.id;
-                          const sectionId = `${columnTitle}-${task.id}`;
-                          return (
-                            <Draggable key={task.id} draggableId={task.id} index={index}>
-                              {(provided) => (
-                                <div
-                                  ref={provided.innerRef}
-                                  {...provided.draggableProps}
-                                  {...provided.dragHandleProps}
-                                >
-                                  <div className="section-title-wrapper" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginTop: '15px', marginBottom: '10px' }}>
-                                    <h3 
-                                        className="section-title" 
-                                        onClick={() => toggleSection(columnTitle, task.id)}
-                                        style={{ cursor: 'pointer', margin: 0 }}
-                                    >
-                                        {collapsedSections[sectionId] ? '▶' : '▼'} {task.name}
-                                    </h3>
-                                    <button 
-                                        className="add-task-to-cat-btn"
-                                        onClick={(e) => {
-                                            e.stopPropagation();
-                                            setAddingToCategory(sectionId);
-                                        }}
-                                        style={{ background: 'transparent', border: '1px solid #555a61', color: '#fff', cursor: 'pointer', fontSize: '1.2rem', padding: '0 8px', borderRadius: '4px', zIndex: 100, position: 'relative' }}
-                                    >+</button>
-                                  </div>
-                                  {addingToCategory === sectionId && (
-                                      <div className="add-task-form" style={{ marginTop: '0', marginBottom: '10px' }}>
-                                        <div className="add-task-form-header">
-                                          <span style={{ fontSize: '0.75rem', color: '#555a61' }}>Add to {task.name}</span>
-                                          <div className="type-selectors">
-                                            <button 
-                                              className={`type-toggle-btn ${newTaskType === 'checklist' ? 'active' : ''}`}
-                                              onClick={() => setNewTaskType('checklist')}
-                                            >Check</button>
-                                            <button 
-                                              className={`type-toggle-btn ${newTaskType === 'progress' ? 'active' : ''}`}
-                                              onClick={() => setNewTaskType('progress')}
-                                            >Prog</button>
-                                          </div>
-                                        </div>
-                                        <input 
-                                          type="text" 
-                                          autoFocus
-                                          placeholder={newTaskType === 'progress' ? "Material/Progress name..." : "New task..."}
-                                          value={newCategoryTaskName}
-                                          onChange={(e) => setNewCategoryTaskName(e.target.value)}
-                                          onKeyDown={(e) => {
-                                            if (e.key === 'Enter') {
-                                                handleAddTaskInCategory(columnTitle, task.name);
-                                            }
-                                            if (e.key === 'Escape') {
-                                              setAddingToCategory(null);
-                                              setNewCategoryTaskName("");
-                                              setNewTaskType("checklist");
-                                            }
-                                          }}
-                                          onBlur={() => {
-                                            if (!newCategoryTaskName.trim()) {
-                                              setAddingToCategory(null);
-                                              setNewTaskType("checklist");
-                                            }
-                                          }}
-                                        />
-                                      </div>
-                                  )}
-                                </div>
-                              )}
-                            </Draggable>
-                          );
-                        }
-
-                        // Ensure we use the currentSection correctly even if it's null (top level tasks)
-                        if (currentSection && collapsedSections[`${columnTitle}-${currentSection}`]) {
-                          // We still need to render the Draggable but hidden if we want to preserve indices?
-                          // Actually, react-beautiful-dnd doesn't like items appearing/disappearing during drag.
-                          // But here they are gone from the DOM.
-                          return null;
-                        }
-                        const isTaskCompleted = task.is_done;
-                        if (!showCompleted && isTaskCompleted) return null;
-
-                        const progress = task.task_type === 'progress' 
-                          ? Math.min(100, Math.max(0, (task.amount_now / task.amount_total) * 100))
-                          : 0;
-
-                        return (
-                          <Draggable key={task.id} draggableId={task.id} index={index}>
-                            {(provided) => (
-                              <div 
-                                className={`task-group ${isTaskCompleted ? 'completed' : ''}`}
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                              >
-                                <div className="task-main-row">
-                                  <label className={`task-item ${task.isAlert ? 'alert-text' : ''} ${isTaskCompleted ? 'completed' : ''}`}>
-                                    <input 
-                                      type="checkbox" 
-                                      checked={isTaskCompleted}
-                                      onChange={() => toggleTask(task.id, isTaskCompleted)}
-                                    />
-                                    <span className="checkmark"></span>
-                                    <input 
-                                        type="text" 
-                                        id={`task-name-${task.id}`}
-                                        name="task-name"
-                                        className="task-name-input"
-                                        value={task.name}
-                                        onChange={(e) => handleTaskNameChange(columnTitle, task.id, e.target.value)}
-                                        onBlur={() => renameTask(task.id, task.name)}
-                                        onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                    />
-                                  </label>
-                                  {task.task_type === 'progress' && (
-                                    <div className="task-progress-controls">
-                                      <input 
-                                        type="number"
-                                        className="progress-input"
-                                        value={task.amount_now}
-                                        onChange={(e) => handleLocalProgressChange(columnTitle, task.id, 'amount_now', e.target.value)}
-                                        onBlur={() => handleUpdateProgress(task.id, parseInt(task.amount_now) || 0, parseInt(task.amount_total) || 1)}
-                                        onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                      />
-                                      <span>/</span>
-                                      <input 
-                                        type="number"
-                                        className="progress-total"
-                                        value={task.amount_total}
-                                        onChange={(e) => handleLocalProgressChange(columnTitle, task.id, 'amount_total', e.target.value)}
-                                        onBlur={() => handleUpdateProgress(task.id, parseInt(task.amount_now) || 0, parseInt(task.amount_total) || 1)}
-                                        onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                      />
-                                    </div>
-                                  )}
-                                  <div className="task-actions">
-                                    <button 
-                                      className="add-subtask-icon icon-btn" 
-                                      onClick={() => setAddingSubtaskTo(task.id)}
-                                      title="Add subtask"
-                                    >
-                                      +
-                                    </button>
-                                    <button 
-                                      className="delete-item-btn icon-btn" 
-                                      onClick={() => deleteTask(task.id)}
-                                      title="Delete task"
-                                    >
-                                      <TrashIcon />
-                                    </button>
-                                  </div>
-                                </div>
-                                {task.task_type === 'progress' && (
-                                  <div className="progress-container">
-                                    <div 
-                                      className={`progress-bar ${progress >= 100 ? 'completed' : ''}`}
-                                      style={{ width: `${progress}%` }}
-                                    ></div>
-                                  </div>
-                                )}
-                                {task.subtasks && task.subtasks.map((sub) => {
-                                  const isSubCompleted = sub.is_done;
-                                  if (!showCompleted && isSubCompleted) return null;
-                                  const subProgress = sub.task_type === 'progress' 
-                                    ? Math.min(100, Math.max(0, (sub.amount_now / sub.amount_total) * 100))
-                                    : 0;
-
-                                  return (
-                                    <div key={sub.id} className={`subtask-group ${isSubCompleted ? 'completed' : ''}`}>
-                                      <div className="task-main-row subtask-row">
-                                        <label className={`task-item subtask ${isSubCompleted ? 'completed' : ''}`}>
-                                          <input 
-                                            type="checkbox" 
-                                            checked={isSubCompleted}
-                                            onChange={() => toggleTask(sub.id, isSubCompleted)}
-                                          />
-                                          <span className="checkmark"></span>
-                                          <input 
-                                              type="text" 
-                                              id={`subtask-name-${sub.id}`}
-                                              name="subtask-name"
-                                              className="task-name-input"
-                                              value={sub.name}
-                                              onChange={(e) => handleTaskNameChange(columnTitle, sub.id, e.target.value)}
-                                              onBlur={() => renameTask(sub.id, sub.name)}
-                                              onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                          />
-                                        </label>
-                                        {sub.task_type === 'progress' && (
-                                          <div className="task-progress-controls">
-                                            <input 
-                                              type="number"
-                                              className="progress-input"
-                                              value={sub.amount_now}
-                                              onChange={(e) => handleLocalProgressChange(columnTitle, sub.id, 'amount_now', e.target.value)}
-                                              onBlur={() => handleUpdateProgress(sub.id, parseInt(sub.amount_now) || 0, parseInt(sub.amount_total) || 1)}
-                                              onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                            />
-                                            <span>/</span>
-                                            <input 
-                                              type="number"
-                                              className="progress-total"
-                                              value={sub.amount_total}
-                                              onChange={(e) => handleLocalProgressChange(columnTitle, sub.id, 'amount_total', e.target.value)}
-                                              onBlur={() => handleUpdateProgress(sub.id, parseInt(sub.amount_now) || 0, parseInt(sub.amount_total) || 1)}
-                                              onKeyDown={(e) => { if(e.key === 'Enter') e.target.blur(); }}
-                                            />
-                                          </div>
-                                        )}
-                                        <button 
-                                          className="delete-item-btn icon-btn" 
-                                          onClick={() => deleteTask(sub.id)}
-                                          title="Delete subtask"
-                                        >
-                                          <TrashIcon />
-                                        </button>
-                                      </div>
-                                      {sub.task_type === 'progress' && (
-                                        <div className="progress-container" style={{ marginLeft: '63px' }}>
-                                          <div 
-                                            className={`progress-bar ${subProgress >= 100 ? 'completed' : ''}`}
-                                            style={{ width: `${subProgress}%` }}
-                                          ></div>
-                                        </div>
-                                      )}
-                                    </div>
-                                  );
-                                })}
-                                {addingSubtaskTo === task.id && (
-                                <div className="add-task-form subtask-form">
-                                  <div className="add-task-form-header">
-                                    <span style={{ fontSize: '0.75rem', color: '#555a61' }}>Add subtask</span>
-                                    <div className="type-selectors">
-                                      <button 
-                                        className={`type-toggle-btn ${newTaskType === 'checklist' ? 'active' : ''}`}
-                                        onClick={() => setNewTaskType('checklist')}
-                                      >Check</button>
-                                      <button 
-                                        className={`type-toggle-btn ${newTaskType === 'progress' ? 'active' : ''}`}
-                                        onClick={() => setNewTaskType('progress')}
-                                      >Prog</button>
-                                    </div>
-                                  </div>
-                                  <input 
-                                    type="text" 
-                                    id={`new-subtask-in-task-${task.id}`}
-                                    name="new-subtask-in-task"
-                                    autoFocus
-                                    placeholder="Subtask name..."
-                                    value={newSubtaskName}
-                                    onChange={(e) => setNewSubtaskName(e.target.value)}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') handleAddSubtask(columnTitle, task.name);
-                                      if (e.key === 'Escape') {
-                                        setAddingSubtaskTo(null);
-                                        setNewSubtaskName("");
-                                        setNewTaskType("checklist");
-                                      }
-                                    }}
-                                    onBlur={() => {
-                                      if (!newSubtaskName.trim()) {
-                                        setAddingSubtaskTo(null);
-                                        setNewTaskType("checklist");
-                                      }
-                                    }}
-                                  />
-                                </div>
-                                )}
-                              </div>
-                            )}
-                          </Draggable>
-                        );
-                      });
-                    })()}
-                    {provided.placeholder}
-                  </div>
-                )}
-              </Droppable>
-
-              {addingToColumn === columnTitle ? (
-                <div className="add-task-form">
-                  <div className="add-task-form-header">
-                    <span style={{ fontSize: '0.75rem', color: '#555a61' }}>Add to {columnTitle}</span>
-                    <div className="type-selectors">
-                      <button 
-                        className={`type-toggle-btn ${newTaskType === 'checklist' ? 'active' : ''}`}
-                        onClick={() => setNewTaskType('checklist')}
-                      >Check</button>
-                      <button 
-                        className={`type-toggle-btn ${newTaskType === 'progress' ? 'active' : ''}`}
-                        onClick={() => setNewTaskType('progress')}
-                      >Prog</button>
-                    </div>
-                  </div>
-                  <input 
-                    type="text" 
-                    id={`new-task-in-col-${columnTitle}`}
-                    name="new-task-in-col"
-                    autoFocus
-                    placeholder="Task name..."
-                    value={newTaskName}
-                    onChange={(e) => setNewTaskName(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleAddTask(columnTitle);
-                      if (e.key === 'Escape') {
-                        setAddingToColumn(null);
-                        setNewTaskName("");
-                        setNewTaskType("checklist");
-                      }
-                    }}
-                    onBlur={() => {
-                      if (!newTaskName.trim()) {
-                        setAddingToColumn(null);
-                        setNewTaskType("checklist");
-                      }
-                    }}
-                  />
-                </div>
-              ) : (
-                <div className="add-task-btn" onClick={() => setAddingToColumn(columnTitle)}>
-                  + Add Task
-                </div>
-              )}
-            </div>
-          ))}
-        </div>
-      </DragDropContext>
-      <div className="dashboard-bottom-container">
-        <CaviaTracker />
-      </div>
-      </>
-
-
       ) : (
-        <RandomPic />
-      )}
+        <>
+          <div style={{ display: activeTab === 'todo' ? 'block' : 'none' }}>
+            <TodoDashboard 
+              config={warframeConfig}
+              sourceName="Warframe"
+              showCompleted={showCompleted}
+              autoSaveEnabled={autoSaveEnabled}
+              saveTrigger={saveTrigger}
+              footer={<CaviaTracker />}
+            />
+          </div>
 
+          <div style={{ display: activeTab === 'cleaning' ? 'block' : 'none' }}>
+            <TodoDashboard 
+              config={cleaningConfig}
+              sourceName="Cleaning"
+              columnTitles={CLEANING_COLUMNS}
+              showCompleted={showCompleted}
+              autoSaveEnabled={autoSaveEnabled}
+              saveTrigger={saveTrigger}
+              resetTrigger={cleaningResetTrigger}
+            />
+          </div>
+
+          {activeTab === 'random-pic' && <RandomPic />}
+        </>
+      )}
     </div>
   );
 }
