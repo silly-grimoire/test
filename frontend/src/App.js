@@ -100,10 +100,16 @@ function App() {
   const [showCompleted, setShowCompleted] = useState(false);
 
   // Authentication states
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isAuthenticated, setIsAuthenticated] = useState(() => {
+    if (!process.env.REACT_APP_PASSWORD_HASH) return true;
+    return localStorage.getItem('is_authenticated') === 'true';
+  });
   const [passwordInput, setPasswordInput] = useState("");
   const [authError, setAuthError] = useState("");
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [checkingAuth, setCheckingAuth] = useState(() => {
+    if (!process.env.REACT_APP_PASSWORD_HASH) return false;
+    return localStorage.getItem('is_authenticated') !== 'true';
+  });
 
   useEffect(() => {
     let link = document.querySelector("link[rel*='icon']");
@@ -243,7 +249,7 @@ function App() {
   useEffect(() => {
     const checkAuthentication = async () => {
       const requiredHash = process.env.REACT_APP_PASSWORD_HASH;
-      if (!requiredHash) {
+      if (!requiredHash || localStorage.getItem('is_authenticated') === 'true') {
         setIsAuthenticated(true);
       }
       setCheckingAuth(false);
@@ -257,6 +263,7 @@ function App() {
     const requiredHash = process.env.REACT_APP_PASSWORD_HASH;
     if (!requiredHash) {
       setIsAuthenticated(true);
+      localStorage.setItem('is_authenticated', 'true');
       return;
     }
 
@@ -264,6 +271,7 @@ function App() {
       const hashedInput = await hashPassword(passwordInput);
       if (hashedInput === requiredHash || passwordInput === requiredHash) {
         setIsAuthenticated(true);
+        localStorage.setItem('is_authenticated', 'true');
         setPasswordInput("");
       } else {
         setAuthError("Incorrect password. Please try again.");
@@ -276,6 +284,7 @@ function App() {
 
   const handleLogout = () => {
     setIsAuthenticated(false);
+    localStorage.removeItem('is_authenticated');
   };
 
   if (checkingAuth) {
