@@ -38,18 +38,30 @@
 
 body.dark-theme {
   background-color: #06080e;
-  background-image: 
-    radial-gradient(ellipse at 50% 25%, rgba(18, 25, 45, 0.65) 0%, rgba(6, 8, 14, 0.92) 75%, #030407 100%),
-    url("./assets/vitruvian_main_bg.jpg");
-  background-size: cover;
-  background-position: center top;
-  background-attachment: fixed;
-  background-repeat: no-repeat;
   font-family: var(--font-body);
   color: var(--text-main);
   margin: 0;
   padding: 0;
   overflow-x: hidden; /* Prevent horizontal scroll on body */
+}
+
+body.dark-theme::before {
+  content: '';
+  position: fixed;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+  background-image: 
+    radial-gradient(ellipse at 50% 25%, rgba(18, 25, 45, 0.65) 0%, rgba(6, 8, 14, 0.92) 75%, #030407 100%),
+    url("./assets/vitruvian_main_bg.jpg");
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  filter: blur(4px);
+  transform: scale(1.02);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .app-wrapper {
@@ -554,19 +566,36 @@ body.dark-theme {
   min-height: 100vh;
   width: 100%;
   background-color: #06080e;
-  background-image: 
-    radial-gradient(ellipse at center, rgba(14, 18, 30, 0.45) 0%, rgba(4, 6, 10, 0.88) 85%, #020306 100%),
-    url("./assets/vitruvian_main_bg.jpg");
-  background-size: cover;
-  background-position: center center;
   position: fixed;
   top: 0;
   left: 0;
   z-index: 10000;
   padding: 20px;
+  overflow: hidden;
+}
+
+.login-screen-container::before {
+  content: '';
+  position: absolute;
+  top: -12px;
+  left: -12px;
+  right: -12px;
+  bottom: -12px;
+  background-image: 
+    radial-gradient(ellipse at center, rgba(14, 18, 30, 0.45) 0%, rgba(4, 6, 10, 0.88) 85%, #020306 100%),
+    url("./assets/vitruvian_main_bg.jpg");
+  background-size: cover;
+  background-position: center center;
+  background-repeat: no-repeat;
+  filter: blur(4px);
+  transform: scale(1.02);
+  z-index: 0;
+  pointer-events: none;
 }
 
 .login-glass-card {
+  position: relative;
+  z-index: 1;
   background: rgba(9, 13, 24, 0.84);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -654,7 +683,7 @@ body.dark-theme {
   border: 1px solid rgba(223, 184, 108, 0.28);
   border-radius: 10px;
   color: #fff;
-  padding: 14px 16px;
+  padding: 14px 48px 14px 16px;
   font-size: 0.95rem;
   outline: none;
   transition: all 0.3s;
@@ -664,6 +693,35 @@ body.dark-theme {
   border-color: var(--text-gold);
   background: rgba(14, 20, 36, 0.95);
   box-shadow: 0 0 16px rgba(223, 184, 108, 0.25);
+}
+
+.login-submit-circle-btn {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+  background: transparent;
+  border: none;
+  color: var(--text-gold, #dfb86c);
+  opacity: 0.75;
+  cursor: pointer;
+  padding: 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  transition: all 0.25s ease;
+}
+
+.login-submit-circle-btn:hover {
+  opacity: 1;
+  color: var(--text-gold-bright, #ffe89e);
+  filter: drop-shadow(0 0 6px rgba(223, 184, 108, 0.6));
+  transform: translateY(-50%) scale(1.1);
+}
+
+.login-submit-circle-btn:active {
+  transform: translateY(-50%) scale(0.95);
 }
 
 .login-error-message {
@@ -679,33 +737,6 @@ body.dark-theme {
   0%, 100% { transform: translateX(0); }
   25% { transform: translateX(-4px); }
   75% { transform: translateX(4px); }
-}
-
-.login-submit-btn {
-  background: linear-gradient(135deg, #b88f3a 0%, #7d5716 100%);
-  border: 1px solid #dfb86c;
-  color: #fff8e7;
-  padding: 14px;
-  border-radius: 12px;
-  font-family: var(--font-orokin);
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5), 0 0 15px rgba(223, 184, 108, 0.25);
-}
-
-.login-submit-btn:hover {
-  background: linear-gradient(135deg, #cda146 0%, #8e641c 100%);
-  border-color: #ffe89e;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.6), 0 0 25px rgba(223, 184, 108, 0.45);
-  transform: translateY(-1px);
-}
-
-.login-submit-btn:active {
-  transform: translateY(1px);
 }
 
 .logout-btn {

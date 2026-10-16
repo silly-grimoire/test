@@ -21,6 +21,10 @@ body.eink-theme {
   -moz-osx-font-smoothing: auto;
 }
 
+body.eink-theme::before {
+  display: none !important;
+}
+
 /* Base resets & layouts */
 .eink-theme .cosmetic-header {
   background-color: #ffffff !important;

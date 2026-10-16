@@ -216,8 +216,7 @@ function App() {
         <div className="login-glass-card">
           <div className="login-header">
             <div className="login-logo-glow"></div>
-            <h1>Todo app or something</h1>
-            <p>Secure Productivity Dashboard</p>
+            <h1>A Random App</h1>
           </div>
           <form onSubmit={handleLogin} className="login-form">
             <div className="input-group">
@@ -230,11 +229,15 @@ function App() {
                 required
               />
               <span className="input-border"></span>
+              <button type="submit" className="login-submit-circle-btn" title="Unlock" aria-label="Unlock">
+                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polyline points="12 8 16 12 12 16"></polyline>
+                  <line x1="8" y1="12" x2="16" y2="12"></line>
+                </svg>
+              </button>
             </div>
             {authError && <div className="login-error-message">{authError}</div>}
-            <button type="submit" className="login-submit-btn">
-              Unlock Dashboard
-            </button>
           </form>
         </div>
       </div>
