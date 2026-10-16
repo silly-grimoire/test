@@ -58,12 +58,18 @@ body.eink-theme::before {
 
 .eink-theme .add-task-form input,
 .eink-theme .subtask-form input,
-.eink-theme .settings-field input,
-.eink-theme .login-form input {
+.eink-theme .settings-field input {
   background-color: #ffffff !important;
   border: 2px solid #000000 !important;
   border-radius: 8px !important;
   color: #000000 !important;
+}
+
+.eink-theme .login-form input {
+  background: transparent !important;
+  border: none !important;
+  color: #000000 !important;
+  box-shadow: none !important;
 }
 
 .eink-theme .add-task-form input::placeholder {
@@ -123,6 +129,35 @@ body.eink-theme::before {
   background-color: #000000 !important;
   color: #ffffff !important;
   border-color: #000000 !important;
+}
+
+.eink-theme .tab-btn {
+  border-radius: 50% !important;
+  width: 30px !important;
+  height: 30px !important;
+  padding: 0 !important;
+}
+
+.eink-theme .tab-btn::before {
+  display: none !important;
+}
+
+.eink-theme .tab-btn.active {
+  width: 42px !important;
+  height: 42px !important;
+}
+
+.eink-theme .save-toggle-btn,
+.eink-theme .toggle-completed-btn,
+.eink-theme .settings-btn,
+.eink-theme .logout-btn {
+  width: 38px !important;
+  height: 38px !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  border-radius: 50% !important;
 }
 
 .eink-theme .type-toggle-btn {

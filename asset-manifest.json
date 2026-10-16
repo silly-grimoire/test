@@ -1,13 +1,14 @@
 {
   "files": {
-    "main.css": "./static/css/main.ad573c51.css",
-    "main.js": "./static/js/main.fcfdfe05.js",
+    "main.css": "./static/css/main.89976cfa.css",
+    "main.js": "./static/js/main.b4c81e65.js",
     "static/js/685.e24429fc.chunk.js": "./static/js/685.e24429fc.chunk.js",
+    "static/media/star_flare_gold.png": "./static/media/star_flare_gold.eee5d774ed24764862eb.png",
     "static/media/vitruvian_main_bg.jpg": "./static/media/vitruvian_main_bg.d7efc5f233f8cd070614.jpg",
     "index.html": "./index.html"
   },
   "entrypoints": [
-    "static/css/main.ad573c51.css",
-    "static/js/main.fcfdfe05.js"
+    "static/css/main.89976cfa.css",
+    "static/js/main.b4c81e65.js"
   ]
 }
